@@ -30,6 +30,7 @@ Testing - none of these need a real Claude turn:
 Day to day:
   brb status             config, live sessions, what's armed
   brb windows            where every window is, and which are fullscreen
+  brb park               move the browser off the terminal's display
   brb log [-f]           the decision log ($STATE/brb.log)
   brb timer [duration]   show or set the break timer (10, 45s, 2m, 1m30s)
   brb items              open the panel item list in \$EDITOR
@@ -146,6 +147,43 @@ cmd_matrix() {
   cp "$saved" "$LOG" 2>/dev/null || true; rm -f "$saved"
 }
 
+# Park the browser on a display the terminal is not using. A fullscreen window
+# can't be moved at all, so drop it out of fullscreen first.
+cmd_park() {
+  local bid tx tw
+  bid=$(default_browser_id)
+  [ -n "$bid" ] || { echo "can't find your default browser" >&2; return 1; }
+  read tx tw <<EOF
+$("$OSA" 2>/dev/null <<'AS'
+tell application "System Events"
+  set p to first application process whose bundle identifier is "com.apple.Terminal"
+  set w to front window of p
+  set {px, py} to position of w
+  set {sw, sh} to size of w
+  return (px as string) & " " & (sw as string)
+end tell
+AS
+)
+EOF
+  [ -n "$tx" ] || { tx=0; tw=1920; }
+  "$OSA" >/dev/null 2>&1 <<AS
+tell application "System Events"
+  set p to first application process whose bundle identifier is "$bid"
+  set w to front window of p
+  try
+    set value of attribute "AXFullScreen" of w to false
+  end try
+  delay 0.6
+  set size of w to {1200, 780}
+  -- just left of the terminal's display, which puts it on the other screen
+  set position of w to {($tx) - 1240, 80}
+end tell
+AS
+  sleep 0.4
+  echo "browser parked. now at: $(app_window_center "$bid")"
+  echo "terminal display starts at x=$tx, so a negative x means the other screen."
+}
+
 cmd_windows() {
   echo "Where your windows actually are (fullscreen windows cannot be moved):"
   "$OSA" 2>/dev/null <<'AS'
@@ -240,6 +278,7 @@ case "${1:-}" in
   matrix)     cmd_matrix ;;
   status)     cmd_status ;;
   windows)    cmd_windows ;;
+  park)       cmd_park ;;
   doctor)     cmd_doctor ;;
   timer)      shift; cmd_timer "$@" ;;
   items)      "${EDITOR:-open -t}" "$(items_file)" ;;

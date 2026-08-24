@@ -1,0 +1,14 @@
+# Break panel items.  Format:  Label|target
+#
+#   https://...        opens in your default browser, and counts as leaving
+#   anything://...      opens in its app, and counts as leaving
+#   note:some text      shows a short reminder, does NOT count as leaving
+#
+# Only "leaving" earns you a "Claude is done" callback when the turn ends.
+# Lines starting with # are ignored. The ⏱ timer row is added automatically.
+
+🐦  X|https://x.com
+👽  Reddit|https://reddit.com
+📰  Hacker News|https://news.ycombinator.com
+💧  Drink some water|note:Refill. Then look 20 feet away for 20 seconds.
+🪟  Look out the window|note:Eyes off the screen. Find something far away and let them relax.

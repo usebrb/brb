@@ -1,0 +1,217 @@
+#!/bin/bash
+# brb - offers a break when Claude works long, calls you back when it's done.
+set -uo pipefail
+BRB_TAG=cli
+# Resolve through symlinks so `brb` works from ~/.local/bin.
+_self="${BASH_SOURCE[0]}"
+while [ -L "$_self" ]; do
+  _d="$(cd "$(dirname "$_self")" && pwd)"
+  _self="$(readlink "$_self")"
+  case "$_self" in /*) ;; *) _self="$_d/$_self" ;; esac
+done
+BRB_HOME="$(cd "$(dirname "$_self")" && pwd)"
+. "$BRB_HOME/lib/common.sh"
+
+usage() {
+  cat <<USAGE
+brb
+
+  brb install            register the hooks in ~/.claude/settings.json
+  brb uninstall          remove them (leaves your settings otherwise untouched)
+
+Testing - none of these need a real Claude turn:
+  brb panel              show the break panel right now
+  brb alert [message]    show the "Claude is done" callback right now
+  brb attention [type]   fire a "Claude needs you" ping
+                         type: permission_prompt | idle_prompt | agent_needs_input
+  brb demo [seconds]     full flow: panel, then the callback after N seconds (default 20)
+  brb matrix             run every decision path with NO UI, print what each would do
+
+Day to day:
+  brb status             config, live sessions, what's armed
+  brb log [-f]           the decision log ($STATE/brb.log)
+  brb timer [duration]   show or set the break timer (10, 45s, 2m, 1m30s)
+  brb items              open the panel item list in \$EDITOR
+  brb on | brb off       enable / disable everything
+  brb doctor             check the install and diagnose common problems
+USAGE
+}
+
+_fake_session() {
+  local sid="test-$$"
+  date +%s > "$STATE/active/$sid"
+  { owning_terminal_bundle || frontmost_bundle; } > "$STATE/term/$sid" 2>/dev/null
+  date +%s > "$STATE/shown/$sid"
+  printf '%s' "$sid"
+}
+_cleanup_session() {
+  rm -f "$STATE/active/$1" "$STATE/term/$1" "$STATE/shown/$1" "$STATE/left/$1"
+}
+
+cmd_panel() {
+  local sid; sid=$(_fake_session)
+  echo "Panel is opening. Owner: $(cat "$STATE/term/$sid")"
+  echo "(this is the real panel - picking a site will open it and count as leaving)"
+  "$BRB_HOME/lib/panel.sh" "$sid"
+  if [ -f "$STATE/left/$sid" ]; then
+    echo "-> you left via the panel. In a real turn you'd get the callback when Claude finished."
+  else
+    echo "-> you didn't leave, so a real turn would stay silent."
+  fi
+  _cleanup_session "$sid"
+}
+
+cmd_alert() {
+  local msg="${1:-This is the callback you get when Claude finishes a long turn.}"
+  local owner; owner=$(owning_terminal_bundle || frontmost_bundle)
+  echo "Firing the real callback. Return-to: $owner"
+  echo "(skips the 'did you leave via the panel' check so you can see it on demand)"
+  "$BRB_HOME/lib/done-dialog.sh" "$msg" "$owner"
+  echo "Button: '$(cat "$STATE/done.txt" 2>/dev/null)'"
+}
+
+cmd_attention() {
+  local t="${1:-permission_prompt}" msg
+  case "$t" in
+    permission_prompt) msg="Waiting on a permission decision." ;;
+    agent_needs_input) msg="An agent needs your input." ;;
+    idle_prompt)       msg="Claude has gone idle." ;;
+    *)                 msg="Claude needs your attention." ;;
+  esac
+  echo "Firing '$t' ping (banner + sound, no dialog)."
+  notify "$TITLE_ATTENTION" "$msg" "$SOUND_ATTENTION"
+}
+
+cmd_demo() {
+  local secs="${1:-20}" sid
+  sid=$(_fake_session)
+  echo "1/2  Panel opening - pick a site, then STAY in the browser."
+  "$BRB_HOME/lib/panel.sh" "$sid"
+  if [ ! -f "$STATE/left/$sid" ]; then
+    echo "You didn't leave via the panel, so a real turn would stay silent here. Done."
+    _cleanup_session "$sid"; return 0
+  fi
+  echo "2/2  You left. Firing the callback in ${secs}s - stay away to see it."
+  local i="$secs"
+  while [ "$i" -gt 0 ]; do printf "\r     %2ds " "$i"; sleep 1; i=$((i-1)); done
+  printf "\r          \r"
+  local owner front
+  owner=$(cat "$STATE/term/$sid"); front=$(frontmost_bundle)
+  if same_app "$owner" "$front"; then
+    echo "You came back to the terminal -> a real turn stays SILENT. Nothing shown."
+  else
+    echo "Away ($front) -> firing the callback. Click 'Back to work'."
+    "$BRB_HOME/lib/done-dialog.sh" "Demo: Claude finished while you were away." "$owner"
+    echo "Button: '$(cat "$STATE/done.txt" 2>/dev/null)'"
+  fi
+  _cleanup_session "$sid"
+}
+
+cmd_matrix() {
+  local T A saved
+  T="com.apple.Terminal"; A="com.example.Browser"
+  saved=$(mktemp); cp "$LOG" "$saved" 2>/dev/null || true
+  _row() { # label front shown left  [ntype]
+    local sid="mx$$-$RANDOM" out
+    : > "$LOG"
+    BRB_DRY=1 bash -c "printf '%s' '{\"session_id\":\"$sid\"}' | '$BRB_HOME/hooks/on-start.sh'"
+    [ "$3" = yes ] && date +%s > "$STATE/shown/$sid"
+    [ "$4" = yes ] && date +%s > "$STATE/left/$sid"
+    if [ -n "${5:-}" ]; then
+      BRB_DRY=1 BRB_FAKE_FRONT="$2" bash -c "printf '%s' '{\"session_id\":\"$sid\",\"notification_type\":\"$5\"}' | '$BRB_HOME/hooks/on-attention.sh'"
+    else
+      BRB_DRY=1 BRB_FAKE_FRONT="$2" bash -c "printf '%s' '{\"session_id\":\"$sid\",\"last_assistant_message\":\"All done.\"}' | '$BRB_HOME/hooks/on-done.sh'"
+    fi
+    out=$(grep -oE 'never left[^"]*|no ping|PINGING[^"]*' "$LOG" | tail -1)
+    [ -z "$out" ] && out="(silent)"
+    printf "  %-46s %s\n" "$1" "$out"
+    rm -f "$STATE"/{active,shown,term,left}/"$sid"
+  }
+  echo "Turn finished - when do you get called back?"
+  _row "short turn, never saw the panel"        "$A" no  no
+  _row "panel shown, you ignored it"            "$A" yes no
+  _row "panel shown, you clicked a note item"   "$A" yes no
+  _row "panel shown, clicked a site, still away" "$A" yes yes
+  _row "panel shown, clicked a site, came back" "$T" yes yes
+  echo
+  echo "Claude wants something - when do you get pinged?"
+  _row "permission prompt, away"                "$A" no  no  permission_prompt
+  _row "permission prompt, at the terminal"     "$T" no  no  permission_prompt
+  _row "idle, away, never left via panel"       "$A" no  no  idle_prompt
+  _row "idle, away, left via panel"             "$A" no  yes idle_prompt
+  cp "$saved" "$LOG" 2>/dev/null || true; rm -f "$saved"
+}
+
+cmd_status() {
+  echo "install:      $BRB_HOME"
+  echo "config:       $BRB_CONF"
+  echo "enabled:      $(is_off && echo 'NO (brb on to enable)' || echo yes)"
+  echo "break timer:  $(fmt_delay "$(current_delay)")"
+  echo "items:        $(items_file)"
+  echo "owner here:   $(owning_terminal_bundle || echo '(not a terminal?)')"
+  echo "frontmost:    $(frontmost_bundle)"
+  echo "browser:      $(default_browser_id)"
+  local a; a=$(ls -A "$STATE/active" 2>/dev/null | tr '\n' ' ')
+  echo "working now:  ${a:-(none)}"
+  local l; l=$(ls -A "$STATE/left" 2>/dev/null | tr '\n' ' ')
+  echo "away via panel: ${l:-(none)}"
+  local p; p=$(cat "$STATE/panel.pid" 2>/dev/null)
+  if [ -n "$p" ] && kill -0 "$p" 2>/dev/null; then echo "panel:        open (pid $p)"; else echo "panel:        closed"; fi
+  echo -n "hooks:        "
+  "$PY" -c "
+import json, os
+p = os.path.expanduser('~/.claude/settings.json')
+try: h = json.load(open(p)).get('hooks', {})
+except Exception: h = {}
+mine = [e for g in h.values() for grp in g for e in grp['hooks'] if '$BRB_HOME' in e.get('command','')]
+print(f'{len(mine)} registered' if mine else 'NOT INSTALLED (run: brb install)')
+"
+}
+
+cmd_timer() {
+  if [ $# -eq 0 ]; then echo "break timer: $(fmt_delay "$(current_delay)")"; return 0; fi
+  local s
+  if s=$(parse_delay "$1"); then
+    echo "$s" > "$STATE/delay"; echo "break timer set to $(fmt_delay "$s")"
+  else
+    echo "can't read '$1' as a duration. try 10, 45s, 2m, 1m30s (minimum 3s)" >&2; return 1
+  fi
+}
+
+cmd_doctor() {
+  local ok=0
+  chk() { if eval "$2" >/dev/null 2>&1; then echo "  ok    $1"; else echo "  FAIL  $1"; ok=1; fi; }
+  echo "brb doctor"
+  chk "macOS"                        "[ \"\$(uname)\" = Darwin ]"
+  chk "python3 present"              "[ -x $PY ]"
+  chk "osascript present"            "[ -x $OSA ]"
+  chk "config dir writable"          "[ -w '$BRB_CONF' ]"
+  chk "items file readable"          "[ -r '$(items_file)' ]"
+  chk "hooks registered"             "$PY -c \"import json,os;h=json.load(open(os.path.expanduser('~/.claude/settings.json'))).get('hooks',{});assert any('$BRB_HOME' in e.get('command','') for g in h.values() for grp in g for e in grp['hooks'])\""
+  chk "can read frontmost app"       "[ -n \"\$($OSA -e 'tell application \"System Events\" to get bundle identifier of first application process whose frontmost is true')\" ]"
+  chk "can find owning terminal"     "[ -n \"\$(owning_terminal_bundle)\" ]"
+  echo
+  [ "$ok" = 0 ] && echo "all good." || echo "something above needs attention."
+  echo "note: notification banners need permission for 'Script Editor' in"
+  echo "      System Settings > Notifications. Sounds always play regardless."
+  return $ok
+}
+
+case "${1:-}" in
+  install)    shift; exec "$BRB_HOME/install.sh" "$@" ;;
+  uninstall)  shift; exec "$BRB_HOME/uninstall.sh" "$@" ;;
+  panel)      cmd_panel ;;
+  alert)      shift; cmd_alert "${1:-}" ;;
+  attention)  shift; cmd_attention "${1:-}" ;;
+  demo)       shift; cmd_demo "${1:-20}" ;;
+  matrix)     cmd_matrix ;;
+  status)     cmd_status ;;
+  doctor)     cmd_doctor ;;
+  timer)      shift; cmd_timer "$@" ;;
+  items)      "${EDITOR:-open -t}" "$(items_file)" ;;
+  log)        if [ "${2:-}" = "-f" ]; then tail -f "$LOG"; else tail -40 "$LOG"; fi ;;
+  on)         rm -f "$BRB_CONF/OFF"; echo "brb enabled" ;;
+  off)        touch "$BRB_CONF/OFF"; echo "brb disabled (brb on to re-enable)" ;;
+  ''|-h|--help|help) usage ;;
+  *)          echo "unknown command: $1" >&2; echo; usage; exit 1 ;;
+esac

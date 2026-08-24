@@ -31,6 +31,23 @@ LOG="$STATE/brb.log"
 log() { printf '%s [%-9s] %s\n' "$(date '+%H:%M:%S')" "${BRB_TAG:-?}" "$*" >> "$LOG" 2>/dev/null; }
 
 is_off() { [ -f "$BRB_CONF/OFF" ]; }
+
+# A stale "busy" marker keeps the panel from ever closing, so sweep anything
+# older than a couple of hours - no real turn runs that long.
+prune_stale() {
+  local now cutoff f sid t
+  now=$(date +%s); cutoff=$((now - 7200))
+  for f in "$STATE"/active/*; do
+    [ -f "$f" ] || continue
+    t=$(cat "$f" 2>/dev/null)
+    case "$t" in ''|*[!0-9]*) t=0 ;; esac
+    if [ "$t" -lt "$cutoff" ]; then
+      sid=$(basename "$f")
+      rm -f "$STATE/active/$sid" "$STATE/shown/$sid" "$STATE/term/$sid" "$STATE/left/$sid"
+      log "pruned stale session $sid"
+    fi
+  done
+}
 is_dry() { [ -n "${BRB_DRY:-}" ]; }
 
 items_file() {

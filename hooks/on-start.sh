@@ -4,6 +4,7 @@ BRB_TAG=start
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/common.sh"
 is_off && { log "OFF, ignoring"; exit 0; }
 
+prune_stale
 eval "$(cat | parse_hook_json)"
 [ -n "$HK_SESSION" ] || { log "no session_id in payload"; exit 0; }
 

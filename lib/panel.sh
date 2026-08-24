@@ -4,6 +4,9 @@ BRB_TAG=panel
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
 SID="$1"
+# Anchor every dialog this panel draws to the terminal that owns the session.
+BRB_ANCHOR=$(cat "$STATE/term/$SID" 2>/dev/null)
+export BRB_ANCHOR
 SEP="──────────────────────────────"
 SEP2="───────────────────────────────"   # one shorter, so the two rows differ
 ADD_ROW="➕  Add your own…"

@@ -176,13 +176,17 @@ spawn_detached() {
   return 0
 }
 
-# Where is the user actually looking? Centre of the frontmost window, as "x,y".
-# Captured BEFORE we draw anything, since our own dialog steals frontmost.
-user_focus_center() {
-  "$OSA" 2>/dev/null <<'AS'
+# Centre of an app's front window, as "x,y", addressed by bundle id.
+# We anchor dialogs to the OWNING TERMINAL rather than to whatever is frontmost:
+# frontmost is unstable (the browser on another display, a screen-recording UI),
+# which made placement inconsistent exactly when it mattered most.
+app_window_center() {
+  local bid="$1"
+  [ -n "$bid" ] || return 1
+  "$OSA" 2>/dev/null <<AS
 tell application "System Events"
   try
-    set p to first application process whose frontmost is true
+    set p to first application process whose bundle identifier is "$bid"
     set {px, py} to position of front window of p
     set {sw, sh} to size of front window of p
     return ((px + sw / 2) as integer as string) & "," & ((py + sh / 2) as integer as string)
@@ -194,13 +198,13 @@ AS
 }
 
 # AppleScript dialogs take no position and default to the MAIN display, which is
-# the wrong screen whenever you're working on a second monitor. Nudge the window
-# onto the point the user is actually looking at, once it exists.
+# the wrong screen whenever the terminal lives on another monitor. Move the
+# window onto the anchor point once it exists.
 center_dialog() {
   local pid="$1" cx="$2" cy="$3"
-  [ -n "$cx" ] && [ -n "$cy" ] || return 0
+  case "$cx$cy" in ''|*[!0-9-]*) return 0 ;; esac
   "$OSA" >/dev/null 2>&1 <<AS &
-set deadline to (current date) + 5
+set deadline to (current date) + 6
 repeat
   try
     tell application "System Events"
@@ -214,15 +218,24 @@ repeat
     end tell
   end try
   if (current date) > deadline then exit repeat
-  delay 0.12
+  delay 0.1
 end repeat
 AS
   return 0
 }
 
+# The point every dialog for this session should be drawn on: the terminal that
+# owns it. Falls back to the terminal running this process, then to nothing
+# (macOS default placement).
+anchor_center() {
+  local bid="${1:-}"
+  [ -n "$bid" ] || bid=$(owning_terminal_bundle)
+  app_window_center "$bid"
+}
+
 osa_tracked() {
   local out="$1" script="$2" pid rc focus
-  focus=$(user_focus_center)
+  focus=$(anchor_center "${BRB_ANCHOR:-}")
   "$OSA" -e "$script" > "$out" 2>/dev/null &
   pid=$!
   center_dialog "$pid" "${focus%%,*}" "${focus##*,}"

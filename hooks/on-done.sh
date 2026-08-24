@@ -14,7 +14,8 @@ rm -f "$STATE/active/$HK_SESSION"
 was_shown=0; [ -f "$STATE/shown/$HK_SESSION" ] && was_shown=1
 was_left=0;  [ -f "$STATE/left/$HK_SESSION" ]  && was_left=1
 term=$(cat "$STATE/term/$HK_SESSION" 2>/dev/null)
-rm -f "$STATE/shown/$HK_SESSION" "$STATE/term/$HK_SESSION" "$STATE/left/$HK_SESSION"
+anchor=$(cat "$STATE/anchor/$HK_SESSION" 2>/dev/null)
+rm -f "$STATE/shown/$HK_SESSION" "$STATE/term/$HK_SESSION" "$STATE/left/$HK_SESSION" "$STATE/anchor/$HK_SESSION"
 
 log "stop sid=${HK_SESSION:0:8} shown=$was_shown left=$was_left owner='$term'"
 
@@ -38,5 +39,5 @@ fi
 
 msg="$HK_LAST"; [ -n "$msg" ] || msg="Turn complete."
 log "PINGING (dialog, return-to='$term'): $msg"
-spawn_detached "$BRB_HOME/lib/done-dialog.sh" "$msg" "$term"
+spawn_detached "$BRB_HOME/lib/done-dialog.sh" "$msg" "$term" "$anchor"
 exit 0

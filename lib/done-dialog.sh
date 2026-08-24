@@ -4,7 +4,7 @@
 BRB_TAG=donedlg
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-msg="$1"; app="$2"
+msg="$1"; app="$2"; cached_anchor="${3:-}"
 [ -n "$msg" ] || msg="Turn complete."
 
 if is_dry; then
@@ -23,7 +23,7 @@ set r to display dialog $(as_str "$msg") with title $(as_str "$TITLE_DONE") butt
 if gave up of r then return \"__gaveup__\"
 return button returned of r"
 
-focus=$(anchor_center "$app")   # $app is the owning terminal bundle id
+focus=$(anchor_center "$app" "$cached_anchor")
 "$OSA" -e "$script" > "$STATE/done.txt" 2>/dev/null &
 pid=$!
 center_dialog "$pid" "${focus%%,*}" "${focus##*,}"

@@ -33,7 +33,7 @@ MOVE_BROWSER=0
 REQUIRE_AWAY=0
 [ -f "$BRB_CONF/config.sh" ] && . "$BRB_CONF/config.sh"
 
-mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left"
+mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left" "$STATE/anchor"
 
 LOG="$STATE/brb.log"
 log() { printf '%s [%-9s] %s\n' "$(date '+%H:%M:%S')" "${BRB_TAG:-?}" "$*" >> "$LOG" 2>/dev/null; }
@@ -263,15 +263,33 @@ AS
 # The point every dialog for this session should be drawn on: the terminal that
 # owns it. Falls back to the terminal running this process, then to nothing
 # (macOS default placement).
+# Prefer the terminal's live geometry; fall back to the point captured at
+# UserPromptSubmit. System Events can't read a window that isn't on the active
+# Space, so a live lookup fails exactly when you've walked away - which is when
+# we need it. Last resort: wherever you're looking now.
 anchor_center() {
-  local bid="${1:-}"
+  local bid="${1:-}" cached="${2:-}" pt
   [ -n "$bid" ] || bid=$(owning_terminal_bundle)
-  app_window_center "$bid"
+  pt=$(app_window_center "$bid")
+  [ -n "$pt" ] && { printf '%s' "$pt"; return 0; }
+  [ -n "$cached" ] && { printf '%s' "$cached"; return 0; }
+  "$OSA" 2>/dev/null <<'AS'
+tell application "System Events"
+  try
+    set p to first application process whose frontmost is true
+    set {px, py} to position of front window of p
+    set {sw, sh} to size of front window of p
+    return ((px + sw / 2) as integer as string) & "," & ((py + sh / 2) as integer as string)
+  on error
+    return ""
+  end try
+end tell
+AS
 }
 
 osa_tracked() {
   local out="$1" script="$2" pid rc focus
-  focus=$(anchor_center "${BRB_ANCHOR:-}")
+  focus=$(anchor_center "${BRB_ANCHOR:-}" "${BRB_ANCHOR_PT:-}")
   "$OSA" -e "$script" > "$out" 2>/dev/null &
   pid=$!
   center_dialog "$pid" "${focus%%,*}" "${focus##*,}"

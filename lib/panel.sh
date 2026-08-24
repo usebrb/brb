@@ -116,7 +116,11 @@ end if"
       bid=$(default_browser_id)
       sleep 0.7
       activate_bundle "$bid"
-      log "opened $target -> foregrounded '${bid:-?}'"
+      # Bring it onto the same display as the terminal, so the break and the
+      # callback don't happen on two different screens.
+      anchor=$(anchor_center "${BRB_ANCHOR:-}")
+      move_window_center "$bid" "${anchor%%,*}" "${anchor##*,}"
+      log "opened $target -> foregrounded '${bid:-?}' at ${anchor:-default}"
       ;;
     *://*)
       "$OPEN" "$target"

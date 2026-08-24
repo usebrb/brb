@@ -130,7 +130,7 @@ cmd_matrix() {
   }
   # Fixtures must never outlive the run: a stale active marker wedges the panel.
   trap 'rm -f "$STATE"/active/mx* "$STATE"/shown/mx* "$STATE"/term/mx* "$STATE"/left/mx*' RETURN
-  echo "Turn finished - when do you get called back?"
+  echo "Turn finished - when do you get called back?  (REQUIRE_AWAY=$REQUIRE_AWAY)"
   _row "short turn, never saw the panel"        "$A" no  no
   _row "panel shown, you ignored it"            "$A" yes no
   _row "panel shown, you clicked a note item"   "$A" yes no

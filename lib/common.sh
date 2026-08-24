@@ -23,6 +23,13 @@ TITLE_DONE="Claude is done"
 TITLE_ATTENTION="Claude needs you"
 PANEL_TITLE="Claude is working…"
 CONTRIB_URL="https://github.com/Sushanti99/brb/blob/main/CONTRIBUTING.md"
+# Pull the browser onto the terminal's display when you take a break, so the
+# whole flow stays on one screen. Set to 0 in config.sh to leave windows alone.
+MOVE_BROWSER=1
+# Call you back whenever the panel sent you away this turn. Set to 1 to also
+# require that you're STILL away when the turn ends - deterministic becomes
+# conditional, and glancing at the terminal at the wrong moment loses the alert.
+REQUIRE_AWAY=0
 [ -f "$BRB_CONF/config.sh" ] && . "$BRB_CONF/config.sh"
 
 mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left"
@@ -219,6 +226,34 @@ repeat
   end try
   if (current date) > deadline then exit repeat
   delay 0.1
+end repeat
+AS
+  return 0
+}
+
+# Move an app's front window so it is centred on (cx,cy), which lands it on
+# whichever display that point belongs to. Keeps the window's own size.
+move_window_center() {
+  local bid="$1" cx="$2" cy="$3"
+  [ "$MOVE_BROWSER" = 1 ] || return 0
+  [ -n "$bid" ] || return 0
+  case "$cx$cy" in ''|*[!0-9-]*) return 0 ;; esac
+  "$OSA" >/dev/null 2>&1 <<AS
+set deadline to (current date) + 4
+repeat
+  try
+    tell application "System Events"
+      set p to first application process whose bundle identifier is "$bid"
+      if (count of windows of p) > 0 then
+        set w to front window of p
+        set {sw, sh} to size of w
+        set position of w to {(($cx) - sw / 2) as integer, (($cy) - sh / 2) as integer}
+        exit repeat
+      end if
+    end tell
+  end try
+  if (current date) > deadline then exit repeat
+  delay 0.15
 end repeat
 AS
   return 0

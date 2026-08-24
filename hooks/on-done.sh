@@ -28,9 +28,13 @@ fi
 # The alert is per-session, and only if the panel actually sent you somewhere.
 [ "$was_left" = 1 ] || { log "you never left via the panel -> no ping"; exit 0; }
 
-front=$(frontmost_bundle)
-log "frontmost='$front' vs owner='$term'"
-same_app "$term" "$front" && { log "you are at the terminal -> no ping"; exit 0; }
+# You asked to be taken away, so you get told when it's done. Sampling focus at
+# the exact instant Stop fires made this a coin flip.
+if [ "$REQUIRE_AWAY" = 1 ]; then
+  front=$(frontmost_bundle)
+  log "frontmost='$front' vs owner='$term'"
+  same_app "$term" "$front" && { log "still at the terminal -> no ping"; exit 0; }
+fi
 
 msg="$HK_LAST"; [ -n "$msg" ] || msg="Turn complete."
 log "PINGING (dialog, return-to='$term'): $msg"

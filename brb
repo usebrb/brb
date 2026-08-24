@@ -29,6 +29,7 @@ Testing - none of these need a real Claude turn:
 
 Day to day:
   brb status             config, live sessions, what's armed
+  brb windows            where every window is, and which are fullscreen
   brb log [-f]           the decision log ($STATE/brb.log)
   brb timer [duration]   show or set the break timer (10, 45s, 2m, 1m30s)
   brb items              open the panel item list in \$EDITOR
@@ -145,6 +146,35 @@ cmd_matrix() {
   cp "$saved" "$LOG" 2>/dev/null || true; rm -f "$saved"
 }
 
+cmd_windows() {
+  echo "Where your windows actually are (fullscreen windows cannot be moved):"
+  "$OSA" 2>/dev/null <<'AS'
+tell application "System Events"
+  set out to ""
+  repeat with p in (every application process whose visible is true)
+    try
+      if (count of windows of p) > 0 then
+        set w to front window of p
+        set {px, py} to position of w
+        set {sw, sh} to size of w
+        set fs to "no"
+        try
+          if (value of attribute "AXFullScreen" of w) then set fs to "YES"
+        end try
+        set out to out & "  " & (name of p) & "  " & (px as string) & "," & (py as string) & ¬
+          "  " & (sw as string) & "x" & (sh as string) & "  fullscreen=" & fs & linefeed
+      end if
+    end try
+  end repeat
+  return out
+end tell
+AS
+  echo
+  echo "  A fullscreen app owns its own Space, so raising it replaces the whole"
+  echo "  screen. Put the browser on a different display, or take it out of"
+  echo "  fullscreen, if you don't want it covering the terminal."
+}
+
 cmd_status() {
   echo "install:      $BRB_HOME"
   echo "config:       $BRB_CONF"
@@ -209,6 +239,7 @@ case "${1:-}" in
   demo)       shift; cmd_demo "${1:-20}" ;;
   matrix)     cmd_matrix ;;
   status)     cmd_status ;;
+  windows)    cmd_windows ;;
   doctor)     cmd_doctor ;;
   timer)      shift; cmd_timer "$@" ;;
   items)      "${EDITOR:-open -t}" "$(items_file)" ;;

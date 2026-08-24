@@ -39,12 +39,17 @@ because offering the break is its whole job.
 | Turn finishes faster than the timer | no | no |
 | Long turn, panel shown, you ignored it | yes | no |
 | Long turn, you clicked a note item | yes | no |
-| Long turn, you clicked a site and stayed away | yes | **done + Back to work** |
-| Long turn, you clicked a site but came back | yes | no |
+| Long turn, you clicked a site | yes | **done + Back to work** |
 | Permission prompt, you're away | — | **"Claude needs you"** |
 | Another Claude session still busy | stays up | your alert still fires |
 
-The callback requires you to have **actually left through the panel**. Seeing the panel
+Clicking a site is the whole condition — you're called back whether or not you
+happen to be looking at the browser when the turn ends. Also requiring you to still
+be away made it a coin flip: glance at the terminal for two seconds at the wrong
+moment and the alert was silently dropped. Set `REQUIRE_AWAY=1` in `config.sh` for
+the stricter behaviour.
+
+The callback still requires you to have **actually left through the panel**. Seeing the panel
 and dismissing it doesn't count, and neither does a `note:` item — those don't take you
 anywhere, so there's nothing to call you back from.
 
@@ -107,9 +112,18 @@ X/Twitter glyph at all. A per-item logo would need a different UI surface.
 
 AppleScript dialogs take no position and default to the **main** display — the one
 with the menu bar — which is the wrong screen whenever you're working elsewhere.
-`brb` reads the frontmost window's bounds before drawing, then moves the dialog to
-centre on it, so the panel and the callback appear on the screen you're actually
-looking at.
+`brb` positions every dialog on the **owning terminal's** window, so the panel, the
+callback, and the terminal that "Back to work" raises all land on one screen.
+Anchoring to the frontmost window instead proved unreliable during screen
+recordings, where focus jumps between displays.
+
+By default the browser is pulled onto that display too when you take a break, so
+the whole flow stays on one monitor. Set `MOVE_BROWSER=0` in `config.sh` to leave
+your windows where they are.
+
+Notification *banners* can't be positioned at all — macOS always draws them on the
+display holding the menu bar. Move the menu bar in System Settings → Displays if
+they appear on the wrong screen.
 
 That reposition needs Accessibility permission. Without it everything still works,
 the dialogs just land on the main display. Grant it under System Settings →

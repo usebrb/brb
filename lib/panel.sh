@@ -119,9 +119,13 @@ end if"
       activate_bundle "$bid"
       # Bring it onto the same display as the terminal, so the break and the
       # callback don't happen on two different screens.
-      anchor=$(anchor_center "${BRB_ANCHOR:-}")
-      move_window_center "$bid" "${anchor%%,*}" "${anchor##*,}"
-      log "opened $target -> foregrounded '${bid:-?}' at ${anchor:-default}"
+      if [ "$MOVE_BROWSER" = 1 ]; then
+        anchor=$(anchor_center "${BRB_ANCHOR:-}" "${BRB_ANCHOR_PT:-}")
+        move_window_center "$bid" "${anchor%%,*}" "${anchor##*,}"
+        log "opened $target -> raised '${bid:-?}', moved to ${anchor:-?}"
+      else
+        log "opened $target -> raised '${bid:-?}' where it already lives (MOVE_BROWSER=0)"
+      fi
       ;;
     *://*)
       "$OPEN" "$target"

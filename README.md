@@ -86,6 +86,16 @@ away at the wrong instant.
 Bundle ids are compared case-insensitively: System Events and LaunchServices disagree
 on case for the same app.
 
+## Adding your own places
+
+Edit `~/.claude/brb/items.txt`, or pick **➕ Add your own…** at the bottom of the
+panel — it opens [CONTRIBUTING.md](CONTRIBUTING.md), where the format is documented
+and PRs against the default list are welcome.
+
+The panel is plain-text only (AppleScript `choose from list`), so item icons are
+limited to emoji and unicode glyphs. Real colored brand logos would need a
+different UI surface.
+
 ## Configuration
 
 - `~/.claude/brb/items.txt` — the panel list. `Label|target`, where target is a URL,

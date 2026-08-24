@@ -5,6 +5,8 @@ BRB_TAG=panel
 
 SID="$1"
 SEP="──────────────────────────────"
+SEP2="───────────────────────────────"   # one shorter, so the two rows differ
+ADD_ROW="➕  Add your own…"
 
 change_delay() {
   local cur secs val script
@@ -53,6 +55,8 @@ while :; do
     done < "$src"
   fi
 
+  items+=("$SEP2" "$ADD_ROW")
+
   lst=""
   for it in "${items[@]}"; do
     [ -n "$lst" ] && lst="$lst, "
@@ -79,8 +83,16 @@ end if"
 
   case "$choice" in
     ''|'__stay__') exit 0 ;;
-    "$SEP")        continue ;;
+    "$SEP"|"$SEP2") continue ;;
     "$timer_row")  change_delay; continue ;;
+    "$ADD_ROW")
+      "$OPEN" "$CONTRIB_URL"
+      [ -n "$SID" ] && date +%s > "$STATE/left/$SID"
+      sleep 0.7
+      activate_bundle "$(default_browser_id)"
+      log "opened CONTRIBUTING.md"
+      exit 0
+      ;;
   esac
 
   target=""; i=0

@@ -7,7 +7,7 @@
 # Only "leaving" earns you a "Claude is done" callback when the turn ends.
 # Lines starting with # are ignored. The ⏱ timer row is added automatically.
 
-🐦  X|https://x.com
+𝕏  X|https://x.com
 👽  Reddit|https://reddit.com
 📰  Hacker News|https://news.ycombinator.com
 💧  Drink some water|note:Refill. Then look 20 feet away for 20 seconds.

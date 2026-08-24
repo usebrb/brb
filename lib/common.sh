@@ -22,6 +22,7 @@ SOUND_ATTENTION=Ping
 TITLE_DONE="Claude is done"
 TITLE_ATTENTION="Claude needs you"
 PANEL_TITLE="Claude is working…"
+CONTRIB_URL="https://github.com/Sushanti99/brb/blob/main/CONTRIBUTING.md"
 [ -f "$BRB_CONF/config.sh" ] && . "$BRB_CONF/config.sh"
 
 mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left"

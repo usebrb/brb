@@ -92,9 +92,9 @@ Edit `~/.claude/brb/items.txt`, or pick **➕ Add your own…** at the bottom of
 panel — it opens [CONTRIBUTING.md](CONTRIBUTING.md), where the format is documented
 and PRs against the default list are welcome.
 
-The panel is plain-text only (AppleScript `choose from list`), so item icons are
-limited to emoji and unicode glyphs. Real colored brand logos would need a
-different UI surface.
+Item icons are emoji or unicode glyphs. Color emoji render fine, but you can't
+supply an image file, so real brand marks aren't available — and Unicode has no
+X/Twitter glyph at all. A per-item logo would need a different UI surface.
 
 ## Configuration
 

@@ -20,11 +20,7 @@ fi
 
 script="activate
 set r to display dialog $(as_str "$msg") with title $(as_str "$TITLE_DONE") buttons {\"Stay\", \"Back to work\"} default button \"Stay\" giving up after 600
-if gave up of r is false and button returned of r is \"Back to work\" then
-  try
-    tell application id $(as_str "$app") to activate
-  end try
-end if
+if gave up of r then return \"__gaveup__\"
 return button returned of r"
 
 focus=$(anchor_center "$app")   # $app is the owning terminal bundle id
@@ -34,5 +30,19 @@ center_dialog "$pid" "${focus%%,*}" "${focus##*,}"
 echo "$pid" > "$STATE/done.pid"
 wait "$pid"
 [ "$(cat "$STATE/done.pid" 2>/dev/null)" = "$pid" ] && rm -f "$STATE/done.pid"
+
+# Raise the terminal only once osascript is gone. Doing it inside the dialog's
+# own script meant that process died a moment later and macOS handed focus
+# straight back to the browser.
+if [ "$(cat "$STATE/done.txt" 2>/dev/null)" = "Back to work" ]; then
+  activate_bundle "$app"
+  sleep 0.35
+  if ! same_app "$app" "$(frontmost_bundle)"; then
+    activate_bundle "$app"          # one retry: Space switches can drop the first
+    sleep 0.35
+  fi
+  log "back to work -> $app (frontmost now: $(frontmost_bundle))"
+fi
+
 log "done dialog closed: $(cat "$STATE/done.txt" 2>/dev/null)"
 exit 0

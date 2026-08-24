@@ -23,9 +23,10 @@ TITLE_DONE="Claude is done"
 TITLE_ATTENTION="Claude needs you"
 PANEL_TITLE="Claude is working…"
 CONTRIB_URL="https://github.com/Sushanti99/brb/blob/main/CONTRIBUTING.md"
-# Pull the browser onto the terminal's display when you take a break, so the
-# whole flow stays on one screen. Set to 0 in config.sh to leave windows alone.
-MOVE_BROWSER=1
+# Leave the browser where it lives. Set to 1 to drag it onto the terminal's
+# display when you take a break - which on a single display means it lands
+# directly on top of the terminal, so it's off by default.
+MOVE_BROWSER=0
 # Call you back whenever the panel sent you away this turn. Set to 1 to also
 # require that you're STILL away when the turn ends - deterministic becomes
 # conditional, and glancing at the terminal at the wrong moment loses the alert.

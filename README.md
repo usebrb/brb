@@ -117,9 +117,9 @@ callback, and the terminal that "Back to work" raises all land on one screen.
 Anchoring to the frontmost window instead proved unreliable during screen
 recordings, where focus jumps between displays.
 
-By default the browser is pulled onto that display too when you take a break, so
-the whole flow stays on one monitor. Set `MOVE_BROWSER=0` in `config.sh` to leave
-your windows where they are.
+Your browser is left where it lives. `MOVE_BROWSER=1` in `config.sh` will drag it
+onto the terminal's display when you take a break, but on a single display that
+means it lands directly on top of the terminal, so it's off by default.
 
 Notification *banners* can't be positioned at all — macOS always draws them on the
 display holding the menu bar. Move the menu bar in System Settings → Displays if

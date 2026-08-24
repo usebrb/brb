@@ -27,8 +27,10 @@ if gave up of r is false and button returned of r is \"Back to work\" then
 end if
 return button returned of r"
 
+focus=$(user_focus_center)
 "$OSA" -e "$script" > "$STATE/done.txt" 2>/dev/null &
 pid=$!
+center_dialog "$pid" "${focus%%,*}" "${focus##*,}"
 echo "$pid" > "$STATE/done.pid"
 wait "$pid"
 [ "$(cat "$STATE/done.pid" 2>/dev/null)" = "$pid" ] && rm -f "$STATE/done.pid"

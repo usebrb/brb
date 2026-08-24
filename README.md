@@ -103,6 +103,18 @@ X/Twitter glyph at all. A per-item logo would need a different UI surface.
 - `~/.claude/brb/config.sh` — optional overrides (sounds, titles).
 - `~/.claude/brb/state/` — runtime state and `brb.log`.
 
+## Multiple monitors
+
+AppleScript dialogs take no position and default to the **main** display — the one
+with the menu bar — which is the wrong screen whenever you're working elsewhere.
+`brb` reads the frontmost window's bounds before drawing, then moves the dialog to
+centre on it, so the panel and the callback appear on the screen you're actually
+looking at.
+
+That reposition needs Accessibility permission. Without it everything still works,
+the dialogs just land on the main display. Grant it under System Settings →
+Privacy & Security → Accessibility for your terminal app.
+
 ## Notes
 
 Notification banners need permission for "Script Editor" under System Settings →

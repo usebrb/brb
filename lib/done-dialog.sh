@@ -23,7 +23,7 @@ set r to display dialog $(as_str "$msg") with title $(as_str "$TITLE_DONE") butt
 if gave up of r then return \"__gaveup__\"
 return button returned of r"
 
-focus=$(anchor_center "$app" "$cached_anchor")
+focus=$(alert_center "$cached_anchor")   # where you are, not where the terminal is
 "$OSA" -e "$script" > "$STATE/done.txt" 2>/dev/null &
 pid=$!
 center_dialog "$pid" "${focus%%,*}" "${focus##*,}"

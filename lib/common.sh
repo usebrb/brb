@@ -263,6 +263,27 @@ AS
 # The point every dialog for this session should be drawn on: the terminal that
 # owns it. Falls back to the terminal running this process, then to nothing
 # (macOS default placement).
+# The callback exists to get your attention, so draw it where you are looking -
+# the window you walked off to. Falls back to the terminal anchor.
+alert_center() {
+  local cached="${1:-}" pt
+  pt=$("$OSA" 2>/dev/null <<'AS'
+tell application "System Events"
+  try
+    set p to first application process whose frontmost is true
+    set {px, py} to position of front window of p
+    set {sw, sh} to size of front window of p
+    return ((px + sw / 2) as integer as string) & "," & ((py + sh / 2) as integer as string)
+  on error
+    return ""
+  end try
+end tell
+AS
+)
+  [ -n "$pt" ] && { printf '%s' "$pt"; return 0; }
+  printf '%s' "$cached"
+}
+
 # Prefer the terminal's live geometry; fall back to the point captured at
 # UserPromptSubmit. System Events can't read a window that isn't on the active
 # Space, so a live lookup fails exactly when you've walked away - which is when

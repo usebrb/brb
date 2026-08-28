@@ -2,7 +2,9 @@
 # Relocatable: nothing here assumes a particular install path.
 
 # BRB_HOME = where this package lives. BRB_CONF = per-user config + state.
-if [ -z "${BRB_HOME:-}" ]; then
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  BRB_HOME="$CLAUDE_PLUGIN_ROOT"          # installed as a Claude Code plugin
+elif [ -z "${BRB_HOME:-}" ]; then
   _src="${BASH_SOURCE[0]}"
   BRB_HOME="$(cd "$(dirname "$_src")/.." && pwd)"
 fi

@@ -1,6 +1,8 @@
 #!/bin/bash
 # Stop: the turn ended. Take the panel down and, if the panel sent you away,
 # call you back.
+# The panel and alerts are AppleScript; nothing to do elsewhere.
+[ "$(uname)" = Darwin ] || exit 0
 BRB_TAG=done
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/common.sh"
 is_off && { log "OFF, ignoring"; exit 0; }

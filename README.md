@@ -7,22 +7,36 @@ hooks. macOS only (it uses `osascript` for the UI).
 
 ## Install
 
+As a Claude Code plugin — nothing touches your `settings.json`:
+
 ```sh
-git clone https://github.com/Sushanti99/brb.git
-cd brb && ./install.sh
+claude plugin marketplace add Sushanti99/brb
+claude plugin install brb@brb
 ```
 
-Then open a **new** Claude Code session — hooks load at session start.
+Then `/reload-plugins`, or start a new session. `/plugin` toggles it on and off.
 
-Requires macOS and Claude Code. No other dependencies: it's plain bash plus the
-`python3` and `osascript` that ship with the OS.
+The plugin ships the hooks. If you also want the `brb` command in your own shell
+for `brb park`, `brb windows`, `brb matrix` and friends, clone the repo and link it:
 
-Registers three hooks in `~/.claude/settings.json` (backing it up first), copies a
-default item list to `~/.claude/brb/items.txt`, and links `brb` into `~/.local/bin`.
-Re-running is safe: it replaces its own entries and leaves other hooks alone.
-`./uninstall.sh` removes them again.
+```sh
+git clone https://github.com/Sushanti99/brb.git
+ln -s "$PWD/brb/brb" ~/.local/bin/brb
+```
 
-Hooks load at session start, so open a new Claude session to pick them up.
+Everything shares one config and state directory at `~/.claude/brb/`, so the CLI and
+the plugin always agree about your timer, item list and logs.
+
+<details>
+<summary>Installing without the plugin manager</summary>
+
+`./install.sh` writes the hooks straight into `~/.claude/settings.json` (backing it up
+first) and links the CLI. Use this only if you are not using the plugin — running both
+registers the hooks twice and everything fires twice. `./uninstall.sh` reverses it.
+</details>
+
+macOS only: the panel and alerts are AppleScript. On other platforms the hooks exit
+immediately and do nothing.
 
 ## What fires, and when
 

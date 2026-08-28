@@ -1,0 +1,14 @@
+{
+  "name": "brb",
+  "owner": {
+    "name": "Sushanti99"
+  },
+  "plugins": [
+    {
+      "name": "brb",
+      "source": "./",
+      "description": "Offers you somewhere to go when Claude runs long, then calls you back the moment it is done."
+    }
+  ],
+  "description": "brb - take a break while Claude Code works, and get called back the moment it is done."
+}

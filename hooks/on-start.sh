@@ -1,5 +1,7 @@
 #!/bin/bash
 # UserPromptSubmit: mark this session working, arm the break timer.
+# The panel and alerts are AppleScript; nothing to do elsewhere.
+[ "$(uname)" = Darwin ] || exit 0
 BRB_TAG=start
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/common.sh"
 is_off && { log "OFF, ignoring"; exit 0; }

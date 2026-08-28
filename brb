@@ -232,12 +232,25 @@ cmd_status() {
   if [ -n "$p" ] && kill -0 "$p" 2>/dev/null; then echo "panel:        open (pid $p)"; else echo "panel:        closed"; fi
   echo -n "hooks:        "
   "$PY" -c "
-import json, os
-p = os.path.expanduser('~/.claude/settings.json')
-try: h = json.load(open(p)).get('hooks', {})
-except Exception: h = {}
-mine = [e for g in h.values() for grp in g for e in grp['hooks'] if '$BRB_HOME' in e.get('command','')]
-print(f'{len(mine)} registered' if mine else 'NOT INSTALLED (run: brb install)')
+import json, os, glob
+# plugin install
+plug = ''
+try:
+    d = json.load(open(os.path.expanduser('~/.claude/plugins/installed_plugins.json')))
+    hit = [k for k in json.dumps(d).split('\"') if k == 'brb']
+    if hit: plug = 'plugin'
+except Exception: pass
+if not plug and glob.glob(os.path.expanduser('~/.claude/plugins/cache/*/brb/*')): plug = 'plugin'
+# settings.json install
+sett = 0
+try:
+    h = json.load(open(os.path.expanduser('~/.claude/settings.json'))).get('hooks', {})
+    sett = len([e for g in h.values() for grp in g for e in grp['hooks'] if 'brb' in e.get('command','')])
+except Exception: pass
+if plug and sett: print(f'BOTH plugin and {sett} in settings.json - they will fire twice, run uninstall.sh')
+elif plug:       print('installed as a plugin')
+elif sett:       print(f'{sett} registered in settings.json')
+else:            print('NOT INSTALLED (claude plugin install brb@brb, or ./install.sh)')
 "
 }
 
@@ -260,7 +273,7 @@ cmd_doctor() {
   chk "osascript present"            "[ -x $OSA ]"
   chk "config dir writable"          "[ -w '$BRB_CONF' ]"
   chk "items file readable"          "[ -r '$(items_file)' ]"
-  chk "hooks registered"             "$PY -c \"import json,os;h=json.load(open(os.path.expanduser('~/.claude/settings.json'))).get('hooks',{});assert any('$BRB_HOME' in e.get('command','') for g in h.values() for grp in g for e in grp['hooks'])\""
+  chk "hooks registered"             "$PY -c \"import json,os,glob;s=json.load(open(os.path.expanduser('~/.claude/settings.json'))).get('hooks',{});a=any('brb' in e.get('command','') for g in s.values() for grp in g for e in grp['hooks']);b=bool(glob.glob(os.path.expanduser('~/.claude/plugins/cache/*/brb/*')));assert a or b\""
   chk "can read frontmost app"       "[ -n \"\$($OSA -e 'tell application \"System Events\" to get bundle identifier of first application process whose frontmost is true')\" ]"
   chk "can find owning terminal"     "[ -n \"\$(owning_terminal_bundle)\" ]"
   echo

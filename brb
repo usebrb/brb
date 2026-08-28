@@ -112,7 +112,7 @@ cmd_demo() {
 
 cmd_matrix() {
   local T A saved
-  T="com.apple.Terminal"; A="com.example.Browser"
+  T=$(owning_terminal_bundle); A="com.example.Browser"
   saved=$(mktemp); cp "$LOG" "$saved" 2>/dev/null || true
   _row() { # label front shown left  [ntype]
     local sid="mx$$-$RANDOM" out
@@ -153,10 +153,12 @@ cmd_park() {
   local bid tx tw
   bid=$(default_browser_id)
   [ -n "$bid" ] || { echo "can't find your default browser" >&2; return 1; }
+  local host
+  host=$(owning_terminal_bundle)
   read tx tw <<EOF
-$("$OSA" 2>/dev/null <<'AS'
+$("$OSA" 2>/dev/null <<AS
 tell application "System Events"
-  set p to first application process whose bundle identifier is "com.apple.Terminal"
+  set p to first application process whose bundle identifier is "$host"
   set w to front window of p
   set {px, py} to position of w
   set {sw, sh} to size of w
@@ -181,7 +183,7 @@ end tell
 AS
   sleep 0.4
   echo "browser parked. now at: $(app_window_center "$bid")"
-  echo "terminal display starts at x=$tx, so a negative x means the other screen."
+  echo "$host window starts at x=$tx, so a negative x means the other screen."
 }
 
 cmd_windows() {

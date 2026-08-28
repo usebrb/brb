@@ -38,6 +38,18 @@ registers the hooks twice and everything fires twice. `./uninstall.sh` reverses 
 macOS only: the panel and alerts are AppleScript. On other platforms the hooks exit
 immediately and do nothing.
 
+### Works wherever Claude Code runs
+
+Claude Code shares one configuration across its local surfaces, so a user-scope
+install covers the CLI, the Desktop app, VS Code and JetBrains at once — there is
+nothing extra to install per surface.
+
+The host app is never assumed to be a terminal. brb walks up the process tree to
+whichever `.app` owns the session and stores its bundle id, so "Back to work" raises
+Terminal from a terminal session, the Claude app from a Desktop session, and VS Code
+from an editor session. The CLI still needs a real shell, which on Desktop means the
+integrated terminal.
+
 ## What fires, and when
 
 Two independent things.

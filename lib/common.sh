@@ -40,6 +40,7 @@ mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left" "$STATE/anch
 LOG="$STATE/brb.log"
 log() { printf '%s [%-9s] %s\n' "$(date '+%H:%M:%S')" "${BRB_TAG:-?}" "$*" >> "$LOG" 2>/dev/null; }
 
+# Kill switch: `brb off` writes this file, `brb on` removes it.
 is_off() { [ -f "$BRB_CONF/OFF" ]; }
 
 # A stale "busy" marker keeps the panel from ever closing, so sweep anything

@@ -16,16 +16,20 @@ claude plugin install brb@brb
 
 Then `/reload-plugins`, or start a new session. `/plugin` toggles it on and off.
 
-The plugin ships the hooks. If you also want the `brb` command in your own shell
-for `brb park`, `brb windows`, `brb matrix` and friends, clone the repo and link it:
+That is the whole install — the plugin ships the hooks, which is all brb needs.
+
+Optionally, add the `brb` command to your shell for `brb park`, `brb windows`,
+`brb timer`, `brb matrix` and `brb log`:
 
 ```sh
-git clone https://github.com/usebrb/brb.git
-ln -s "$PWD/brb/brb" ~/.local/bin/brb
+curl -fsSL https://raw.githubusercontent.com/usebrb/brb/main/install-cli.sh | bash
 ```
 
-Everything shares one config and state directory at `~/.claude/brb/`, so the CLI and
-the plugin always agree about your timer, item list and logs.
+That installs a small wrapper which runs whichever plugin version is currently
+installed, so the command and the hooks never drift apart. A plugin's `bin/` joins
+the Bash tool's PATH rather than your shell's, which is why this step exists.
+
+Config, item list and logs live in `~/.claude/brb/` and are shared by both.
 
 <details>
 <summary>Installing without the plugin manager</summary>

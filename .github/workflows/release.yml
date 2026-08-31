@@ -1,0 +1,47 @@
+name: release
+on:
+  push:
+    branches: [main]
+    paths: ['brb', 'lib/**', 'hooks/**', 'share/**', '.claude-plugin/**']
+
+# Users only see an update when the manifest version changes, so bump it
+# automatically whenever shipped code changes and the version was left alone.
+jobs:
+  bump:
+    if: "!contains(github.event.head_commit.message, '[skip bump]')"
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 2 }
+
+      - name: Bump patch version if it was not already changed
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, pathlib
+          p = pathlib.Path(".claude-plugin/plugin.json")
+          cur = json.loads(p.read_text())["version"]
+          prev = subprocess.run(
+              ["git", "show", "HEAD~1:.claude-plugin/plugin.json"],
+              capture_output=True, text=True)
+          old = json.loads(prev.stdout)["version"] if prev.returncode == 0 else None
+          if old is not None and cur != old:
+              print(f"version already bumped {old} -> {cur}, nothing to do")
+              raise SystemExit(0)
+          major, minor, patch = (cur.split(".") + ["0", "0"])[:3]
+          new = f"{major}.{minor}.{int(patch) + 1}"
+          d = json.loads(p.read_text()); d["version"] = new
+          p.write_text(json.dumps(d, indent=2) + "\n")
+          pathlib.Path("BUMPED").write_text(new)
+          print(f"bumped {cur} -> {new}")
+          PY
+
+      - name: Commit the bump
+        run: |
+          if [ -f BUMPED ]; then
+            rm BUMPED
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -am "Release $(python3 -c "import json;print(json.load(open('.claude-plugin/plugin.json'))['version'])") [skip bump]"
+            git push
+          fi

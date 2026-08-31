@@ -1,0 +1,48 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: for f in brb lib/*.sh hooks/*.sh install.sh install-cli.sh uninstall.sh; do bash -n "$f"; done
+
+      - name: Manifests are valid JSON
+        run: |
+          python3 -c "import json;json.load(open('.claude-plugin/plugin.json'))"
+          python3 -c "import json;json.load(open('.claude-plugin/marketplace.json'))"
+          python3 -c "import json;json.load(open('hooks/hooks.json'))"
+
+      - name: Hooks point at the plugin root
+        run: |
+          python3 - <<'PY'
+          import json
+          h = json.load(open("hooks/hooks.json"))["hooks"]
+          cmds = [e["command"] for g in h.values() for grp in g for e in grp["hooks"]]
+          assert cmds, "no hooks declared"
+          for c in cmds:
+              assert "${CLAUDE_PLUGIN_ROOT}" in c, f"hook not relative to plugin root: {c}"
+          print(f"{len(cmds)} hooks OK")
+          PY
+
+      - name: CLI is intact
+        # v1.1.1 shipped a brb that had been overwritten by a wrapper and did
+        # nothing but exec itself. Assert the real commands are still in there.
+        run: |
+          for cmd in cmd_status cmd_panel cmd_alert cmd_demo cmd_matrix cmd_park cmd_windows cmd_doctor; do
+            grep -q "^$cmd()" brb || { echo "missing $cmd in brb"; exit 1; }
+          done
+          test "$(wc -l < brb)" -gt 200 || { echo "brb is suspiciously short"; exit 1; }
+          echo "CLI intact"
+
+      - name: Every hook guards for macOS
+        run: |
+          for f in hooks/on-*.sh; do
+            grep -q 'uname.*Darwin' "$f" || { echo "$f has no macOS guard"; exit 1; }
+          done
+          echo "guards present"

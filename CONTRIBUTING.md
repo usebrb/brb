@@ -39,6 +39,54 @@ should stay short — it's a starting point people edit, not a directory. If you
 addition is niche, it probably belongs in your own
 `~/.claude/brb/items.txt` rather than the defaults, and that's fine.
 
+## Working on the plugin itself
+
+brb installs as a Claude Code plugin, and the installed copy is **versioned and
+separate from your checkout** — editing the repo changes nothing until you publish.
+Load your working tree directly instead:
+
+```sh
+claude --plugin-dir /path/to/brb
+```
+
+That takes precedence over the installed copy for that session. After an edit, run
+`/reload-plugins` rather than restarting.
+
+Check the manifest before you push:
+
+```sh
+claude plugin validate .
+```
+
+Do not run `./install.sh` while the plugin is installed. It writes the same hooks
+into `~/.claude/settings.json`, so every hook fires twice. `brb status` warns you if
+both are present.
+
+### Testing a hook without a real turn
+
+The hooks read their payload as JSON on stdin, so you can drive them by hand:
+
+```sh
+printf '%s' '{"session_id":"t1"}' | hooks/on-start.sh
+printf '%s' '{"session_id":"t1","last_assistant_message":"done"}' | hooks/on-done.sh
+```
+
+Two environment variables make this safe and repeatable:
+
+| | |
+|---|---|
+| `BRB_DRY=1` | decide and log, draw nothing on screen |
+| `BRB_FAKE_FRONT=<bundle-id>` | pretend that app is frontmost |
+
+`./brb matrix` uses both to exercise every branch with no UI at all. Run it before
+and after any change to the alert rules.
+
+### Releases
+
+CI bumps the patch version automatically when shipped code changes on `main`, so
+users see an update. Bump `version` yourself in the same commit for a minor or major
+release and CI will leave it alone.
+
 ## Changing behaviour
 
 Run the decision matrix before and after any change to the alert rules:

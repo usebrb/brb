@@ -26,8 +26,10 @@ fi
 front=$(frontmost_bundle)
 if ! same_app "$term" "$front"; then
   case "$HK_NTYPE" in
-    permission_prompt) msg="Waiting on a permission decision." ;;
-    agent_needs_input) msg="An agent needs your input." ;;
+    permission_prompt)      msg="Waiting on a permission decision." ;;
+    agent_needs_input)      msg="An agent needs your input." ;;
+    elicitation_dialog)     msg="Claude is asking you a question." ;;
+    elicitation_url_dialog) msg="Claude needs you to open a link." ;;
     idle_prompt)       msg="Claude has gone idle." ;;
     *)                 msg="Claude needs your attention." ;;
   esac

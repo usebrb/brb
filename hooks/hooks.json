@@ -3,22 +3,37 @@
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/on-start.sh", "async": true, "timeout": 120 }
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/on-start.sh",
+            "async": true,
+            "timeout": 120
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/on-done.sh", "async": true, "timeout": 660 }
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/on-done.sh",
+            "async": true,
+            "timeout": 660
+          }
         ]
       }
     ],
     "Notification": [
       {
-        "matcher": "permission_prompt|agent_needs_input|idle_prompt",
+        "matcher": "permission_prompt|agent_needs_input|idle_prompt|elicitation_dialog|elicitation_url_dialog",
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/on-attention.sh", "async": true, "timeout": 660 }
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/on-attention.sh",
+            "async": true,
+            "timeout": 660
+          }
         ]
       }
     ]

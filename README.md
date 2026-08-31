@@ -70,7 +70,7 @@ because offering the break is its whole job.
 | Long turn, panel shown, you ignored it | yes | no |
 | Long turn, you clicked a note item | yes | no |
 | Long turn, you clicked a site | yes | **done + Back to work** |
-| Permission prompt, you're away | — | **"Claude needs you"** |
+| Claude is blocked on you and you're away | — | **"Claude needs you"** |
 | Another Claude session still busy | stays up | your alert still fires |
 
 Clicking a site is the whole condition — you're called back whether or not you
@@ -83,8 +83,10 @@ The callback still requires you to have **actually left through the panel**. See
 and dismissing it doesn't count, and neither does a `note:` item — those don't take you
 anywhere, so there's nothing to call you back from.
 
-A permission prompt is deliberately exempt from that rule: Claude is *blocked* on you,
-so gating it would mean stalling in silence.
+Anything where Claude is *blocked on you* is deliberately exempt from that rule —
+a permission prompt, a question, a link it needs opened. Gating those would mean
+stalling in silence. They still stay quiet if you're at the terminal, since you can
+already see them.
 
 ## Testing without a real turn
 

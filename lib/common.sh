@@ -24,7 +24,7 @@ SOUND_ATTENTION=Ping
 TITLE_DONE="Claude is done"
 TITLE_ATTENTION="Claude needs you"
 PANEL_TITLE="Claude is working…"
-CONTRIB_URL="https://github.com/Sushanti99/brb/blob/main/CONTRIBUTING.md"
+CONTRIB_URL="https://github.com/usebrb/brb/blob/main/CONTRIBUTING.md"
 # Leave the browser where it lives. Set to 1 to drag it onto the terminal's
 # display when you take a break - which on a single display means it lands
 # directly on top of the terminal, so it's off by default.

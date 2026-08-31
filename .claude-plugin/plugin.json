@@ -1,11 +1,11 @@
 {
   "name": "brb",
   "description": "Offers you somewhere to go when Claude runs long, then calls you back the moment it is done. macOS.",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "author": {
     "name": "Sushanti99"
   },
-  "homepage": "https://github.com/Sushanti99/brb",
-  "repository": "https://github.com/Sushanti99/brb",
+  "homepage": "https://github.com/usebrb/brb",
+  "repository": "https://github.com/usebrb/brb",
   "license": "MIT"
 }

@@ -10,7 +10,7 @@ hooks. macOS only (it uses `osascript` for the UI).
 As a Claude Code plugin — nothing touches your `settings.json`:
 
 ```sh
-claude plugin marketplace add Sushanti99/brb
+claude plugin marketplace add usebrb/brb
 claude plugin install brb@brb
 ```
 
@@ -20,7 +20,7 @@ The plugin ships the hooks. If you also want the `brb` command in your own shell
 for `brb park`, `brb windows`, `brb matrix` and friends, clone the repo and link it:
 
 ```sh
-git clone https://github.com/Sushanti99/brb.git
+git clone https://github.com/usebrb/brb.git
 ln -s "$PWD/brb/brb" ~/.local/bin/brb
 ```
 

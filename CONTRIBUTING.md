@@ -81,6 +81,15 @@ Two environment variables make this safe and repeatable:
 `./brb matrix` uses both to exercise every branch with no UI at all. Run it before
 and after any change to the alert rules.
 
+To exercise the real hooks without waiting on a slow Claude turn:
+
+```sh
+./brb seed 30
+```
+
+That runs `on-start.sh`, waits, then runs `on-done.sh` with realistic payloads —
+the same scripts and the same order Claude Code uses — and prints the trace.
+
 ### Releases
 
 CI bumps the patch version automatically when shipped code changes on `main`, so

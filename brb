@@ -25,6 +25,7 @@ Testing - none of these need a real Claude turn:
   brb attention [type]   fire a "Claude needs you" ping
                          type: permission_prompt | idle_prompt | agent_needs_input
   brb demo [seconds]     full flow: panel, then the callback after N seconds (default 20)
+  brb seed [seconds]     drive the REAL hooks through a whole turn (default 30)
   brb matrix             run every decision path with NO UI, print what each would do
 
 Day to day:
@@ -108,6 +109,30 @@ cmd_demo() {
     echo "Button: '$(cat "$STATE/done.txt" 2>/dev/null)'"
   fi
   _cleanup_session "$sid"
+}
+
+# Drive the real hook scripts through a whole turn, so you can test the actual
+# code path Claude Code takes without needing a slow Claude turn to sit through.
+cmd_seed() {
+  local secs="${1:-30}" sid="seed-$$"
+  echo "Seeding a $secs second turn (session $sid)."
+  echo "This runs the real hooks, so it exercises exactly what Claude Code triggers."
+  echo
+  printf '%s' "{\"session_id\":\"$sid\"}" | "$BRB_HOME/hooks/on-start.sh"
+  echo "  UserPromptSubmit fired - panel due in $(fmt_delay "$(current_delay)")"
+  echo "  pick a site when it appears, then stay in the browser"
+  echo
+  local i="$secs"
+  while [ "$i" -gt 0 ]; do printf "\r  turn ends in %3ds " "$i"; sleep 1; i=$((i-1)); done
+  printf "\r                      \r"
+  printf '%s' "{\"session_id\":\"$sid\",\"last_assistant_message\":\"Seeded turn finished. This is the callback you get when Claude is done.\"}" \
+    | "$BRB_HOME/hooks/on-done.sh"
+  echo "  Stop fired"
+  echo
+  echo "Trace:"
+  grep -F "$sid" "$LOG" 2>/dev/null | sed 's/^/  /'
+  grep -F "donedlg" "$LOG" 2>/dev/null | tail -2 | sed 's/^/  /'
+  rm -f "$STATE"/active/"$sid" "$STATE"/shown/"$sid" "$STATE"/term/"$sid" "$STATE"/left/"$sid" "$STATE"/anchor/"$sid"
 }
 
 cmd_matrix() {
@@ -291,6 +316,7 @@ case "${1:-}" in
   attention)  shift; cmd_attention "${1:-}" ;;
   demo)       shift; cmd_demo "${1:-20}" ;;
   matrix)     cmd_matrix ;;
+  seed)       shift; cmd_seed "${1:-30}" ;;
   status)     cmd_status ;;
   windows)    cmd_windows ;;
   park)       cmd_park ;;

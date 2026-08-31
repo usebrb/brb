@@ -34,7 +34,7 @@ jobs:
         # v1.1.1 shipped a brb that had been overwritten by a wrapper and did
         # nothing but exec itself. Assert the real commands are still in there.
         run: |
-          for cmd in cmd_status cmd_panel cmd_alert cmd_demo cmd_matrix cmd_park cmd_windows cmd_doctor; do
+          for cmd in cmd_status cmd_panel cmd_alert cmd_demo cmd_seed cmd_matrix cmd_park cmd_windows cmd_doctor; do
             grep -q "^$cmd()" brb || { echo "missing $cmd in brb"; exit 1; }
           done
           test "$(wc -l < brb)" -gt 200 || { echo "brb is suspiciously short"; exit 1; }

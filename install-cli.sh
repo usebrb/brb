@@ -11,6 +11,9 @@
 set -euo pipefail
 BIN="${1:-$HOME/.local/bin}"
 mkdir -p "$BIN"
+# Remove first: if this path is a symlink into a checkout, writing to it would
+# overwrite the real CLI through the link instead of replacing the link.
+rm -f "$BIN/brb"
 cat > "$BIN/brb" <<'WRAPPER'
 #!/bin/bash
 d=$(ls -d "$HOME"/.claude/plugins/cache/*/brb/*/ 2>/dev/null | sort -V | tail -1)

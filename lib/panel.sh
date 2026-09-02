@@ -10,7 +10,7 @@ BRB_ANCHOR_PT=$(cat "$STATE/anchor/$SID" 2>/dev/null)
 export BRB_ANCHOR BRB_ANCHOR_PT
 SEP="──────────────────────────────"
 SEP2="───────────────────────────────"   # one shorter, so the two rows differ
-ADD_ROW="➕  Add your own…"
+ADD_ROW="Add your own…"
 
 change_delay() {
   local cur secs val script
@@ -45,7 +45,7 @@ while :; do
   [ -n "$SID" ] && { [ -f "$STATE/active/$SID" ] || exit 0; }
 
   delay=$(current_delay)
-  timer_row="⏱  Break timer: $(fmt_delay "$delay") — change…"
+  timer_row="Break timer: $(fmt_delay "$delay") — change…"
 
   items=("$timer_row" "$SEP")
   labels=(); targets=()

@@ -52,6 +52,15 @@ jobs:
           grep -q 'EDITOR.*items_file)' brb && { echo "brb items still opens the shipped default"; exit 1; }
           echo "editing targets the user copy"
 
+      - name: Owner lookup skips non-UI bundles
+        # Claude Code ships as a nested app bundle inside the desktop app. If the
+        # walk stops at the first .app it returns a bundle with no window, and
+        # "Back to work" silently activates nothing.
+        run: |
+          grep -q 'is_running_app()' lib/common.sh || { echo "no is_running_app guard"; exit 1; }
+          grep -q 'is_running_app "$bid"' lib/common.sh || { echo "owner walk does not check for a UI process"; exit 1; }
+          echo "owner lookup guarded"
+
       - name: Every hook guards for macOS
         run: |
           for f in hooks/on-*.sh; do

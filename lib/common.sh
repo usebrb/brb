@@ -113,21 +113,44 @@ as_str() { printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/
 # --- who owns this session -------------------------------------------------
 # Walk the process tree to the owning terminal app. This is a fact, unlike
 # "whatever is frontmost", which is only a guess about focus at hook time.
+# Does this bundle id belong to something with a running UI process? Only such
+# an app can be brought to the front.
+is_running_app() {
+  local n
+  n=$("$OSA" -e "tell application \"System Events\" to return (count of (every application process whose bundle identifier is \"$1\"))" 2>/dev/null)
+  case "$n" in ''|0) return 1 ;; *) return 0 ;; esac
+}
+
+# Bundle id of the app that OWNS this Claude session, found by walking the
+# process tree. Unlike "whatever is frontmost", this cannot be wrong just
+# because you tabbed away in the moment the hook ran.
+#
+# Nested bundles matter: the desktop app runs Claude Code from an app bundle
+# inside its own support folder, so the first .app going up is
+# com.anthropic.claude-code, which has no window and cannot be activated. Keep
+# climbing until an ancestor is actually running as a UI process.
 owning_terminal_bundle() {
-  local pid=$$ ppid comm appdir i=0
-  while [ "$i" -lt 12 ]; do
+  local pid=$$ ppid comm appdir bid i=0 last=""
+  while [ "$i" -lt 14 ]; do
     ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
     case "$ppid" in ''|0|1) break ;; esac
     comm=$(ps -o comm= -p "$ppid" 2>/dev/null)
     case "$comm" in
       *.app/Contents/MacOS/*)
         appdir="${comm%%.app/Contents/MacOS/*}.app"
-        /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' \
-          "$appdir/Contents/Info.plist" 2>/dev/null
-        return 0 ;;
+        bid=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' \
+              "$appdir/Contents/Info.plist" 2>/dev/null)
+        if [ -n "$bid" ]; then
+          last="$bid"
+          is_running_app "$bid" && { printf '%s' "$bid"; return 0; }
+        fi
+        ;;
     esac
     pid="$ppid"; i=$((i+1))
   done
+  # Nothing activatable found: fall back to the innermost bundle we saw, which
+  # is what this used to return unconditionally.
+  [ -n "$last" ] && { printf '%s' "$last"; return 0; }
   return 1
 }
 

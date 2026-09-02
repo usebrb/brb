@@ -61,9 +61,26 @@ prune_stale() {
 }
 is_dry() { [ -n "${BRB_DRY:-}" ]; }
 
+# Reading: your list if you have one, otherwise the shipped default. Staying on
+# the default means you keep getting new items as they are added.
 items_file() {
   [ -f "$BRB_CONF/items.txt" ] && { printf '%s' "$BRB_CONF/items.txt"; return; }
   printf '%s' "$BRB_HOME/share/items.txt"
+}
+
+# Editing: always your own copy. The shipped default lives inside the versioned
+# plugin directory, which is deleted and replaced on every update - edits there
+# are silently lost.
+user_items_file() { printf '%s' "$BRB_CONF/items.txt"; }
+
+ensure_user_items() {
+  local f="$BRB_CONF/items.txt"
+  if [ ! -f "$f" ]; then
+    mkdir -p "$BRB_CONF"
+    cp "$BRB_HOME/share/items.txt" "$f" 2>/dev/null || return 1
+    log "seeded $f from the shipped defaults"
+  fi
+  printf '%s' "$f"
 }
 
 # Hook payload on stdin -> shell assignments to eval.

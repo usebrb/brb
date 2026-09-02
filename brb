@@ -245,7 +245,11 @@ cmd_status() {
   echo "config:       $BRB_CONF"
   echo "enabled:      $(is_off && echo 'NO (brb on to enable)' || echo yes)"
   echo "break timer:  $(fmt_delay "$(current_delay)")"
-  echo "items:        $(items_file)"
+  if [ -f "$(user_items_file)" ]; then
+    echo "items:        $(user_items_file)"
+  else
+    echo "items:        shipped defaults (brb items makes your own copy)"
+  fi
   echo "owner here:   $(owning_terminal_bundle || echo '(not a terminal?)')"
   echo "frontmost:    $(frontmost_bundle)"
   echo "browser:      $(default_browser_id)"
@@ -322,7 +326,9 @@ case "${1:-}" in
   park)       cmd_park ;;
   doctor)     cmd_doctor ;;
   timer)      shift; cmd_timer "$@" ;;
-  items)      "${EDITOR:-open -t}" "$(items_file)" ;;
+  items)      f=$(ensure_user_items) || { echo "could not create $(user_items_file)" >&2; exit 1; }
+              echo "editing $f"
+              "${EDITOR:-open -t}" "$f" ;;
   log)        if [ "${2:-}" = "-f" ]; then tail -f "$LOG"; else tail -40 "$LOG"; fi ;;
   reset)      rm -f "$STATE"/active/* "$STATE"/shown/* "$STATE"/term/* "$STATE"/left/* \
                     "$STATE/panel.pid" "$STATE/done.pid" 2>/dev/null

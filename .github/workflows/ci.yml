@@ -40,6 +40,18 @@ jobs:
           test "$(wc -l < brb)" -gt 200 || { echo "brb is suspiciously short"; exit 1; }
           echo "CLI intact"
 
+      - name: Editing never targets the plugin directory
+        # The shipped list lives in the versioned plugin dir, which is replaced
+        # on every update. Anything that opens a file for editing must use the
+        # user's own copy or their changes vanish on upgrade.
+        run: |
+          grep -q 'user_items_file()' lib/common.sh || { echo "no user_items_file"; exit 1; }
+          grep -q 'ensure_user_items()' lib/common.sh || { echo "no ensure_user_items"; exit 1; }
+          grep -q 'ensure_user_items' brb || { echo "brb items does not seed a user copy"; exit 1; }
+          grep -q 'ensure_user_items' lib/panel.sh || { echo "Add your own does not seed a user copy"; exit 1; }
+          grep -q 'EDITOR.*items_file)' brb && { echo "brb items still opens the shipped default"; exit 1; }
+          echo "editing targets the user copy"
+
       - name: Every hook guards for macOS
         run: |
           for f in hooks/on-*.sh; do

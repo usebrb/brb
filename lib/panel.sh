@@ -90,11 +90,10 @@ end if"
     "$SEP"|"$SEP2") continue ;;
     "$timer_row")  change_delay; continue ;;
     "$ADD_ROW")
-      "$OPEN" "$CONTRIB_URL"
-      [ -n "$SID" ] && date +%s > "$STATE/left/$SID"
-      sleep 0.7
-      activate_bundle "$(default_browser_id)"
-      log "opened CONTRIBUTING.md"
+      # Your own list, seeded from the defaults on first use. Not a departure,
+      # so it earns no callback.
+      f=$(ensure_user_items) && "$OPEN" "$f"
+      log "opened ${f:-items.txt} for editing"
       exit 0
       ;;
   esac

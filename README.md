@@ -135,8 +135,14 @@ X/Twitter glyph at all. A per-item logo would need a different UI surface.
 
 ## Configuration
 
-- `~/.claude/brb/items.txt` — the panel list. `Label|target`, where target is a URL,
-  an `app://` scheme, or `note:some text`.
+- `~/.claude/brb/items.txt` — your panel list. Created the first time you run
+  `brb items` or pick **Add your own…** in the panel. Format is `Label|target`,
+  where target is a URL, an `app://` scheme, or `note:some text`.
+
+  Until you make one, the panel reads the list shipped with the plugin, so you keep
+  getting new default items as they are added. Once your copy exists it takes over
+  and updates leave it alone. Never edit the copy inside the plugin directory —
+  that is replaced wholesale on every update.
 - `~/.claude/brb/config.sh` — optional overrides (sounds, titles).
 - `~/.claude/brb/state/` — runtime state and `brb.log`.
 

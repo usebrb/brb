@@ -17,7 +17,7 @@ was_shown=0; [ -f "$STATE/shown/$HK_SESSION" ] && was_shown=1
 was_left=0;  [ -f "$STATE/left/$HK_SESSION" ]  && was_left=1
 term=$(cat "$STATE/term/$HK_SESSION" 2>/dev/null)
 anchor=$(cat "$STATE/anchor/$HK_SESSION" 2>/dev/null)
-rm -f "$STATE/shown/$HK_SESSION" "$STATE/term/$HK_SESSION" "$STATE/left/$HK_SESSION" "$STATE/anchor/$HK_SESSION"
+rm -f "$STATE/shown/$HK_SESSION" "$STATE/term/$HK_SESSION" "$STATE/left/$HK_SESSION" "$STATE/anchor/$HK_SESSION" "$STATE/rearm/$HK_SESSION"
 
 log "stop sid=${HK_SESSION:0:8} shown=$was_shown left=$was_left owner='$term'"
 

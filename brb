@@ -153,7 +153,7 @@ cmd_matrix() {
     out=$(grep -oE 'never left[^"]*|no ping|PINGING[^"]*' "$LOG" | tail -1)
     [ -z "$out" ] && out="(silent)"
     printf "  %-46s %s\n" "$1" "$out"
-    rm -f "$STATE/active/$sid" "$STATE/shown/$sid" "$STATE/term/$sid" "$STATE/left/$sid"
+    rm -f "$STATE/active/$sid" "$STATE/shown/$sid" "$STATE/term/$sid" "$STATE/left/$sid" "$STATE/rearm/$sid"
   }
   # Fixtures must never outlive the run: a stale active marker wedges the panel.
   trap 'rm -f "$STATE"/active/mx* "$STATE"/shown/mx* "$STATE"/term/mx* "$STATE"/left/mx*' RETURN
@@ -330,7 +330,7 @@ case "${1:-}" in
               echo "editing $f"
               "${EDITOR:-open -t}" "$f" ;;
   log)        if [ "${2:-}" = "-f" ]; then tail -f "$LOG"; else tail -40 "$LOG"; fi ;;
-  reset)      rm -f "$STATE"/active/* "$STATE"/shown/* "$STATE"/term/* "$STATE"/left/* \
+  reset)      rm -f "$STATE"/active/* "$STATE"/shown/* "$STATE"/term/* "$STATE"/left/* "$STATE"/rearm/* \
                     "$STATE/panel.pid" "$STATE/done.pid" 2>/dev/null
               kill_panel; kill_done_dialog
               echo "state cleared (timer and items kept)" ;;

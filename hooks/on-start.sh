@@ -12,7 +12,7 @@ eval "$(cat | parse_hook_json)"
 
 kill_done_dialog
 date +%s > "$STATE/active/$HK_SESSION"
-rm -f "$STATE/shown/$HK_SESSION" "$STATE/left/$HK_SESSION"
+rm -f "$STATE/shown/$HK_SESSION" "$STATE/left/$HK_SESSION" "$STATE/rearm/$HK_SESSION"
 
 # The terminal that owns this session, from the process tree. Falls back to
 # the focused app only if that walk fails.

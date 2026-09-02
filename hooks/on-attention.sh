@@ -37,9 +37,17 @@ if ! same_app "$term" "$front"; then
   notify "$TITLE_ATTENTION" "$msg" "$SOUND_ATTENTION"
 fi
 
-# Re-arm: once you've answered and wandered off again, the panel can return.
+# Re-arm once: after you answer, the panel can come back if you wander off
+# again. Only once per turn - a turn with several permission prompts used to
+# reopen the panel after every one of them.
 if [ -n "$HK_SESSION" ] && [ -f "$STATE/active/$HK_SESSION" ]; then
-  rm -f "$STATE/shown/$HK_SESSION"
-  spawn_detached "$BRB_HOME/lib/watch.sh" "$HK_SESSION"
+  if [ -f "$STATE/rearm/$HK_SESSION" ]; then
+    log "already re-armed this turn -> not reopening the panel"
+  else
+    date +%s > "$STATE/rearm/$HK_SESSION"
+    rm -f "$STATE/shown/$HK_SESSION"
+    spawn_detached "$BRB_HOME/lib/watch.sh" "$HK_SESSION"
+    log "re-armed the panel (once per turn)"
+  fi
 fi
 exit 0

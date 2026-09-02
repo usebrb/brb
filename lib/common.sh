@@ -35,7 +35,7 @@ MOVE_BROWSER=0
 REQUIRE_AWAY=0
 [ -f "$BRB_CONF/config.sh" ] && . "$BRB_CONF/config.sh"
 
-mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left" "$STATE/anchor"
+mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left" "$STATE/anchor" "$STATE/rearm"
 
 LOG="$STATE/brb.log"
 log() { printf '%s [%-9s] %s\n' "$(date '+%H:%M:%S')" "${BRB_TAG:-?}" "$*" >> "$LOG" 2>/dev/null; }

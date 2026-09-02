@@ -1,7 +1,7 @@
 {
   "name": "brb",
   "description": "Offers you somewhere to go when Claude runs long, then calls you back the moment it is done. macOS.",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "author": {
     "name": "Sushanti99"
   },

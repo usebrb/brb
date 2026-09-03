@@ -1,9 +1,11 @@
 # brb
 
-When Claude works past a threshold, offer a break. When it finishes, call you back.
+When Claude works, brb offers a break. When it finishes, brb calls you back.
 
-No AI, no polling, no terminal scraping — it hangs off Claude Code's own lifecycle
-hooks. macOS only (it uses `osascript` for the UI).
+It hangs off Claude Code's own lifecycle hooks. macOS only (it uses `osascript` for the UI).
+
+<img width="1080" height="1080" alt="C-violet" src="https://github.com/user-attachments/assets/2fb953cc-74b1-4e9f-9892-1b098f8f0422" />
+
 
 ## Install
 

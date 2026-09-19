@@ -1,7 +1,7 @@
 {
   "name": "brb",
   "description": "Offers you somewhere to go when Claude runs long, then calls you back the moment it is done. Hooks only; an optional menu bar app draws a native panel and callback.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": {
     "name": "Sushanti99"
   },

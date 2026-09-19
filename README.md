@@ -4,12 +4,11 @@ When Claude works, brb offers a break. When it finishes, brb calls you back.
 
 It hangs off Claude Code's own lifecycle hooks. macOS only (it uses `osascript` for the UI).
 
-<img width="1080" height="1080" alt="C-violet" src="https://github.com/user-attachments/assets/2fb953cc-74b1-4e9f-9892-1b098f8f0422" />
-
+<img width="1080" height="1080" alt="brb: go somewhere on purpose. It comes and gets you when Claude is done." src="brb-poster.png" />
 
 ## Install
 
-As a Claude Code plugin — nothing touches your `settings.json`:
+As a Claude Code plugin, with nothing written to your `settings.json`:
 
 ```sh
 claude plugin marketplace add usebrb/brb
@@ -18,7 +17,7 @@ claude plugin install brb@brb
 
 Then `/reload-plugins`, or start a new session. `/plugin` toggles it on and off.
 
-That is the whole install — the plugin ships the hooks, which is all brb needs.
+That is the whole install. The plugin ships the hooks, which is all brb needs.
 
 Optionally, add the `brb` command to your shell for `brb park`, `brb windows`,
 `brb timer`, `brb matrix` and `brb log`:
@@ -37,7 +36,7 @@ Config, item list and logs live in `~/.claude/brb/` and are shared by both.
 <summary>Installing without the plugin manager</summary>
 
 `./install.sh` writes the hooks straight into `~/.claude/settings.json` (backing it up
-first) and links the CLI. Use this only if you are not using the plugin — running both
+first) and links the CLI. Use this only if you are not using the plugin: running both
 registers the hooks twice and everything fires twice. `./uninstall.sh` reverses it.
 </details>
 
@@ -47,7 +46,7 @@ immediately and do nothing.
 ### Works wherever Claude Code runs
 
 Claude Code shares one configuration across its local surfaces, so a user-scope
-install covers the CLI, the Desktop app, VS Code and JetBrains at once — there is
+install covers the CLI, the Desktop app, VS Code and JetBrains at once. There is
 nothing extra to install per surface.
 
 The host app is never assumed to be a terminal. brb walks up the process tree to
@@ -60,11 +59,11 @@ integrated terminal.
 
 Two independent things.
 
-**The break panel** — a native list you pick from. Fires on one condition: a turn
+**The break panel** is a native list you pick from. It fires on one condition: a turn
 passed the break timer (default 10s). It shows whether or not you're at the terminal,
 because offering the break is its whole job.
 
-**The alerts** — sound, banner, and a dialog with a *Back to work* button.
+**The alerts** are a sound, a banner, and a dialog with a *Back to work* button.
 
 | Situation | Panel | Alert |
 |---|---|---|
@@ -72,20 +71,20 @@ because offering the break is its whole job.
 | Long turn, panel shown, you ignored it | yes | no |
 | Long turn, you clicked a note item | yes | no |
 | Long turn, you clicked a site | yes | **done + Back to work** |
-| Claude is blocked on you and you're away | — | **"Claude needs you"** |
+| Claude is blocked on you and you're away | no | **"Claude needs you"** |
 | Another Claude session still busy | stays up | your alert still fires |
 
-Clicking a site is the whole condition — you're called back whether or not you
+Clicking a site is the whole condition. You're called back whether or not you
 happen to be looking at the browser when the turn ends. Also requiring you to still
 be away made it a coin flip: glance at the terminal for two seconds at the wrong
 moment and the alert was silently dropped. Set `REQUIRE_AWAY=1` in `config.sh` for
 the stricter behaviour.
 
 The callback still requires you to have **actually left through the panel**. Seeing the panel
-and dismissing it doesn't count, and neither does a `note:` item — those don't take you
+and dismissing it doesn't count, and neither does a `note:` item. Those don't take you
 anywhere, so there's nothing to call you back from.
 
-Anything where Claude is *blocked on you* is deliberately exempt from that rule —
+Anything where Claude is *blocked on you* is deliberately exempt from that rule:
 a permission prompt, a question, a link it needs opened. Gating those would mean
 stalling in silence. They still stay quiet if you're at the terminal, since you can
 already see them.
@@ -100,7 +99,7 @@ brb demo 20            # full flow: pick a site, then the callback 20s later
 brb matrix             # every decision path, printed, NO UI drawn
 ```
 
-`brb matrix` is the fast one — it runs each branch with `BRB_DRY=1` and prints what
+`brb matrix` is the fast one. It runs each branch with `BRB_DRY=1` and prints what
 each would have done, so you can check the logic without a single popup.
 
 ## Day to day
@@ -118,8 +117,8 @@ brb doctor             # check the install
 
 The terminal that owns a session is found by walking the process tree
 (`hook → claude → shell → Terminal.app`) and stored as a bundle id. That's a fact about
-who owns the session, not a guess about what happened to be focused when the hook ran —
-an earlier version used frontmost-app and would mis-record the terminal if you tabbed
+who owns the session, not a guess about what happened to be focused when the hook ran.
+An earlier version used frontmost-app and would mis-record the terminal if you tabbed
 away at the wrong instant.
 
 Bundle ids are compared case-insensitively: System Events and LaunchServices disagree
@@ -128,30 +127,30 @@ on case for the same app.
 ## Adding your own places
 
 Edit `~/.claude/brb/items.txt`, or pick **➕ Add your own…** at the bottom of the
-panel — it opens [CONTRIBUTING.md](CONTRIBUTING.md), where the format is documented
+panel, which opens [CONTRIBUTING.md](CONTRIBUTING.md), where the format is documented
 and PRs against the default list are welcome.
 
 Item icons are emoji or unicode glyphs. Color emoji render fine, but you can't
-supply an image file, so real brand marks aren't available — and Unicode has no
+supply an image file, so real brand marks aren't available, and Unicode has no
 X/Twitter glyph at all. A per-item logo would need a different UI surface.
 
 ## Configuration
 
-- `~/.claude/brb/items.txt` — your panel list. Created the first time you run
+- `~/.claude/brb/items.txt`: your panel list. Created the first time you run
   `brb items` or pick **Add your own…** in the panel. Format is `Label|target`,
   where target is a URL, an `app://` scheme, or `note:some text`.
 
   Until you make one, the panel reads the list shipped with the plugin, so you keep
   getting new default items as they are added. Once your copy exists it takes over
-  and updates leave it alone. Never edit the copy inside the plugin directory —
-  that is replaced wholesale on every update.
-- `~/.claude/brb/config.sh` — optional overrides (sounds, titles).
-- `~/.claude/brb/state/` — runtime state and `brb.log`.
+  and updates leave it alone. Never edit the copy inside the plugin directory,
+  which is replaced wholesale on every update.
+- `~/.claude/brb/config.sh`: optional overrides (sounds, titles).
+- `~/.claude/brb/state/`: runtime state and `brb.log`.
 
 ## Multiple monitors
 
-AppleScript dialogs take no position and default to the **main** display — the one
-with the menu bar — which is the wrong screen whenever you're working elsewhere.
+AppleScript dialogs take no position and default to the **main** display, the one
+with the menu bar, which is the wrong screen whenever you're working elsewhere.
 `brb` positions every dialog on the **owning terminal's** window, so the panel, the
 callback, and the terminal that "Back to work" raises all land on one screen.
 Anchoring to the frontmost window instead proved unreliable during screen
@@ -161,7 +160,7 @@ Your browser is left where it lives. `MOVE_BROWSER=1` in `config.sh` will drag i
 onto the terminal's display when you take a break, but on a single display that
 means it lands directly on top of the terminal, so it's off by default.
 
-Notification *banners* can't be positioned at all — macOS always draws them on the
+Notification *banners* can't be positioned at all. macOS always draws them on the
 display holding the menu bar. Move the menu bar in System Settings → Displays if
 they appear on the wrong screen.
 
@@ -175,5 +174,5 @@ Notification banners need permission for "Script Editor" under System Settings �
 Notifications. A sound plays regardless, so you're never left with no signal.
 
 Hooks are registered `async: true` and never block a turn. Their timeouts are generous
-only because they cap how long the detached children — the break timer and the callback
-dialog — are allowed to live.
+only because they cap how long the detached children (the break timer and the callback
+dialog) are allowed to live.

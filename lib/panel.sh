@@ -28,7 +28,7 @@ return text returned of r"
       log "break timer set to ${secs}s"
       "$OSA" -e "activate" -e "display dialog $(as_str "Break timer set to $(fmt_delay "$secs").
 
-Takes effect from the next turn — this one keeps its original wait.") buttons {\"OK\"} default button \"OK\" with title \"Break timer\"" >/dev/null 2>&1
+Takes effect from the next turn. This one keeps its original wait.") buttons {\"OK\"} default button \"OK\" with title \"Break timer\"" >/dev/null 2>&1
       return 0
     fi
     "$OSA" -e "activate" -e "display dialog $(as_str "\"$val\" isn't a duration I can read. Try 10, 45s, 2m, or 1m30s (minimum 3s).") buttons {\"OK\"} default button \"OK\" with title \"Break timer\" with icon caution" >/dev/null 2>&1
@@ -45,7 +45,7 @@ while :; do
   [ -n "$SID" ] && { [ -f "$STATE/active/$SID" ] || exit 0; }
 
   delay=$(current_delay)
-  timer_row="Break timer: $(fmt_delay "$delay") — change…"
+  timer_row="Break timer: $(fmt_delay "$delay") · change…"
 
   items=("$timer_row" "$SEP")
   labels=(); targets=()

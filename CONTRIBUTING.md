@@ -6,7 +6,7 @@ break and think others would use it too, send it over.
 ## Adding a place to the default list
 
 1. Fork this repo and clone your fork.
-2. Edit [`share/items.txt`](share/items.txt) — one line per item:
+2. Edit [`share/items.txt`](share/items.txt), one line per item:
 
    ```
    Label|target
@@ -35,14 +35,14 @@ break and think others would use it too, send it over.
 ## What tends to get merged
 
 Places a lot of people already go, or genuinely useful nudges. The default list
-should stay short — it's a starting point people edit, not a directory. If your
+should stay short. It's a starting point people edit, not a directory. If your
 addition is niche, it probably belongs in your own
 `~/.claude/brb/items.txt` rather than the defaults, and that's fine.
 
 ## Working on the plugin itself
 
 brb installs as a Claude Code plugin, and the installed copy is **versioned and
-separate from your checkout** — editing the repo changes nothing until you publish.
+separate from your checkout**, so editing the repo changes nothing until you publish.
 Load your working tree directly instead:
 
 ```sh
@@ -87,8 +87,8 @@ To exercise the real hooks without waiting on a slow Claude turn:
 ./brb seed 30
 ```
 
-That runs `on-start.sh`, waits, then runs `on-done.sh` with realistic payloads —
-the same scripts and the same order Claude Code uses — and prints the trace.
+That runs `on-start.sh`, waits, then runs `on-done.sh` with realistic payloads,
+using the same scripts in the same order Claude Code uses, and prints the trace.
 
 ### Releases
 
@@ -105,7 +105,7 @@ Run the decision matrix before and after any change to the alert rules:
 ```
 
 It exercises every branch with no UI drawn and prints what each would do. If a row
-changes, say so in the PR — those rules are the whole product, and they've each
+changes, say so in the PR. Those rules are the whole product, and they've each
 been argued for:
 
 - The callback fires only if the panel sent you somewhere, so dismissing the panel
@@ -118,6 +118,6 @@ been argued for:
 ## Style
 
 Plain bash, no dependencies beyond what macOS ships. Every script must pass
-`bash -n`. Keep comments for the things that are surprising — why `setsid` is
-avoided, why bundle ids are compared case-insensitively — not for what the code
+`bash -n`. Keep comments for the things that are surprising, like why `setsid` is
+avoided or why bundle ids are compared case-insensitively, not for what the code
 plainly says.

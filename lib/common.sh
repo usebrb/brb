@@ -417,14 +417,33 @@ hooks_know_app() {
   grep -q 'ui_send()' "$root/lib/common.sh" 2>/dev/null
 }
 
-# Every brb whose hooks Claude Code might actually run: the installed plugin
-# versions, plus anything registered in settings.json.
+# Every brb whose hooks Claude Code might actually run: the newest cached
+# plugin version, plus anything registered in settings.json. A plugin update
+# leaves the older version behind in the cache, and hooks nobody runs are not
+# worth warning about.
 installed_hook_roots() {
-  "$PY" - <<'PY' 2>/dev/null
-import glob, json, os
-roots = set(glob.glob(os.path.expanduser("~/.claude/plugins/cache/*/brb/*")))
+  local cache="${1:-$HOME/.claude/plugins/cache}" settings="${2:-$HOME/.claude/settings.json}"
+  "$PY" - "$cache" "$settings" <<'PYSRC' 2>/dev/null
+import glob, json, os, sys
+
+cache, settings = sys.argv[1], sys.argv[2]
+roots = set()
+
+def key(v):
+    return tuple(int(p) if p.isdigit() else -1 for p in v.split("."))
+
+# .../cache/<marketplace>/brb/<version> - keep only the newest of each.
+newest = {}
+for path in glob.glob(os.path.join(cache, "*", "brb", "*")):
+    if not os.path.isdir(path):
+        continue
+    parent, version = os.path.split(path)
+    if parent not in newest or key(version) > key(os.path.basename(newest[parent])):
+        newest[parent] = path
+roots.update(newest.values())
+
 try:
-    hooks = json.load(open(os.path.expanduser("~/.claude/settings.json"))).get("hooks", {})
+    hooks = json.load(open(settings)).get("hooks", {})
     for group in hooks.values():
         for entry in group:
             for hook in entry.get("hooks", []):
@@ -438,10 +457,11 @@ try:
                     roots.add(root)
 except Exception:
     pass
+
 for r in sorted(roots):
     if os.path.isdir(r):
         print(r)
-PY
+PYSRC
 }
 
 # 0 = the app handled it, so the shell should not draw anything.

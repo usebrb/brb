@@ -95,6 +95,24 @@ if hooks_know_app "$REPO"; then ok "this checkout is app-aware"; else bad "this 
 if hooks_know_app "$OLD"; then bad "an older install is spotted"; else ok "an older install is spotted"; fi
 rm -rf "$OLD"
 
+# A plugin update leaves the previous version in the cache. Only the one Claude
+# Code would actually run counts, or doctor warns about hooks nobody runs.
+FAKE=$(mktemp -d /tmp/brb-cache.XXXX)
+mkdir -p "$FAKE/brb/brb/1.1.9/lib" "$FAKE/brb/brb/1.2.0/lib" "$FAKE/brb/brb/1.10.0/lib"
+echo 'is_off() { false; }'     > "$FAKE/brb/brb/1.1.9/lib/common.sh"
+echo 'ui_send() { return 1; }' > "$FAKE/brb/brb/1.2.0/lib/common.sh"
+echo 'ui_send() { return 1; }' > "$FAKE/brb/brb/1.10.0/lib/common.sh"
+roots=$(installed_hook_roots "$FAKE" /dev/null)
+case "$roots" in
+  *1.10.0*) ok "the newest cached version is the one checked" ;;
+  *)        bad "the newest cached version is the one checked" "got: $roots" ;;
+esac
+case "$roots" in
+  *1.1.9*) bad "superseded versions are ignored" "got: $roots" ;;
+  *)       ok "superseded versions are ignored" ;;
+esac
+rm -rf "$FAKE"
+
 note "doctor"
 if says "doctor" "menu bar app"; then ok "doctor checks the app"; else bad "doctor checks the app"; fi
 

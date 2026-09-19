@@ -375,9 +375,98 @@ kill_done_dialog() {
   rm -f "$STATE/done.pid"; return 0
 }
 
+# --- the menu bar app ------------------------------------------------------
+# If brb.app is running it draws everything; the AppleScript path below stays
+# as the fallback, so nothing here is required.
+UI_SOCK="$STATE/ui.sock"
+
+ui_json() {
+  "$PY" -c 'import json,sys;print(json.dumps(dict(zip(sys.argv[1::2], sys.argv[2::2]))))' "$@" 2>/dev/null
+}
+
+# Wherever brb.app ended up. A running app writes its own path here, which
+# beats guessing: the wrong guess means we draw the AppleScript panel on top of
+# the app's one.
+ui_app_bundle() {
+  local p
+  p=$(cat "$STATE/ui.app" 2>/dev/null)
+  [ -n "$p" ] && [ -x "$p/Contents/MacOS/brb" ] && { printf '%s' "$p"; return 0; }
+  for p in "/Applications/brb.app" \
+           "$HOME/Applications/brb.app" \
+           "$BRB_CONF/brb.app" \
+           "$BRB_HOME/app/dist/brb.app"; do
+    [ -x "$p/Contents/MacOS/brb" ] && { printf '%s' "$p"; return 0; }
+  done
+  return 1
+}
+
+# The app binary doubles as the client, so we do not depend on netcat.
+ui_client() {
+  local b
+  b=$(ui_app_bundle) || return 1
+  printf '%s' "$b/Contents/MacOS/brb"
+}
+
+ui_running() { pgrep -f "brb.app/Contents/MacOS/brb" >/dev/null 2>&1; }
+
+# Does the brb at this path know how to hand its UI to the app? Hooks released
+# before the app always draw the AppleScript panel, which is why an older
+# plugin plus a new app looks like two different brbs fighting.
+hooks_know_app() {
+  local root="${1:-$BRB_HOME}"
+  grep -q 'ui_send()' "$root/lib/common.sh" 2>/dev/null
+}
+
+# Every brb whose hooks Claude Code might actually run: the installed plugin
+# versions, plus anything registered in settings.json.
+installed_hook_roots() {
+  "$PY" - <<'PY' 2>/dev/null
+import glob, json, os
+roots = set(glob.glob(os.path.expanduser("~/.claude/plugins/cache/*/brb/*")))
+try:
+    hooks = json.load(open(os.path.expanduser("~/.claude/settings.json"))).get("hooks", {})
+    for group in hooks.values():
+        for entry in group:
+            for hook in entry.get("hooks", []):
+                cmd = hook.get("command", "")
+                if "brb" not in cmd:
+                    continue
+                path = cmd.strip('"').split('"')[0]
+                # .../hooks/on-start.sh -> the brb root two levels up
+                root = os.path.dirname(os.path.dirname(path))
+                if root:
+                    roots.add(root)
+except Exception:
+    pass
+for r in sorted(roots):
+    if os.path.isdir(r):
+        print(r)
+PY
+}
+
+# 0 = the app handled it, so the shell should not draw anything.
+ui_send() {
+  [ "${BRB_UI:-1}" = 1 ] || return 1
+  [ -S "$UI_SOCK" ] || return 1
+  is_dry && { log "DRY: would hand the app $1"; return 1; }
+  local c out
+  if c=$(ui_client); then
+    out=$("$c" send "$1" 2>/dev/null)
+  elif [ -x /usr/bin/nc ]; then
+    out=$(printf '%s\n' "$1" | /usr/bin/nc -U "$UI_SOCK" 2>/dev/null)
+  else
+    return 1
+  fi
+  case "$out" in *'"ok":true'*) return 0 ;; *) return 1 ;; esac
+}
+
+ui_up() { ui_send '{"event":"ping"}'; }
+
 notify() {
   local title="$1" msg="$2" sound="${3:-Glass}"
   is_dry && { log "DRY: would notify [$title] $msg"; return 0; }
+  # BRB_QUIET=1 keeps a test run from ringing the machine it runs on.
+  [ "${BRB_QUIET:-0}" = 1 ] && { log "quiet: would notify [$title] $msg"; return 0; }
   [ -f "$SOUNDS/$sound.aiff" ] && "$AFPLAY" "$SOUNDS/$sound.aiff" >/dev/null 2>&1 &
   "$OSA" -e "display notification $(as_str "$msg") with title $(as_str "$title")" >/dev/null 2>&1
   return 0

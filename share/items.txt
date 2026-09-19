@@ -6,10 +6,13 @@
 #
 # Only "leaving" earns you a "Claude is done" callback when the turn ends.
 # Lines starting with # are ignored. The timer row is added automatically.
-# Labels are plain text: the panel is an AppleScript list and cannot render images.
+# An emoji at the start of a label is used as the item's icon. The menu bar app
+# replaces it with the site's own logo once it has fetched one; the AppleScript
+# panel is a plain list and shows the emoji.
 
-X|https://x.com
-Reddit|https://reddit.com
-Hacker News|https://news.ycombinator.com
-Drink some water|note:Refill. Then look 20 feet away for 20 seconds.
-Look out the window|note:Eyes off the screen. Find something far away and let them relax.
+🐦 X|https://x.com
+👽 Reddit|https://reddit.com
+📰 Hacker News|https://news.ycombinator.com
+💧 Drink some water|note:Refill. Then look 20 feet away for 20 seconds.
+🪟 Look out the window|note:Eyes off the screen. Find something far away and let them relax.
+🧘 Stand up and stretch|note:Shoulders back, chin up. Thirty seconds is enough.

@@ -34,7 +34,8 @@ if ! same_app "$term" "$front"; then
     *)                 msg="Claude needs your attention." ;;
   esac
   log "PINGING type=$HK_NTYPE: $msg"
-  notify "$TITLE_ATTENTION" "$msg" "$SOUND_ATTENTION"
+  ui_send "$(ui_json event attention session "$HK_SESSION" type "$HK_NTYPE" message "$msg")" \
+    || notify "$TITLE_ATTENTION" "$msg" "$SOUND_ATTENTION"
 fi
 
 # Re-arm once: after you answer, the panel can come back if you wander off

@@ -16,8 +16,19 @@ usage() {
   cat <<USAGE
 brb
 
-  brb install            register the hooks in ~/.claude/settings.json
-  brb uninstall          remove them (leaves your settings otherwise untouched)
+Day to day:
+  brb status             config, live sessions, what's armed
+  brb timer [duration]   show or set the break timer (10, 45s, 2m, 1m30s)
+  brb items              open the panel item list in \$EDITOR
+  brb on | brb off       enable / disable everything
+  brb log [-f]           the decision log ($STATE/brb.log)
+  brb doctor             check the install and diagnose common problems
+
+The menu bar app - a nicer panel and callback than the AppleScript ones:
+  brb app                is it built, installed, running?
+  brb app build          build it from this checkout (needs Xcode tools)
+  brb app install        put it in /Applications and start it
+  brb app start | stop   run it or quit it
 
 Testing - none of these need a real Claude turn:
   brb panel              show the break panel right now
@@ -28,17 +39,60 @@ Testing - none of these need a real Claude turn:
   brb seed [seconds]     drive the REAL hooks through a whole turn (default 30)
   brb matrix             run every decision path with NO UI, print what each would do
 
-Day to day:
-  brb status             config, live sessions, what's armed
+Windows and state:
   brb windows            where every window is, and which are fullscreen
   brb park               move the browser off the terminal's display
-  brb log [-f]           the decision log ($STATE/brb.log)
-  brb timer [duration]   show or set the break timer (10, 45s, 2m, 1m30s)
-  brb items              open the panel item list in \$EDITOR
-  brb on | brb off       enable / disable everything
   brb reset              clear stuck sessions and close any open panel
-  brb doctor             check the install and diagnose common problems
+
+Installing without the plugin manager:
+  brb install            register the hooks in ~/.claude/settings.json
+  brb uninstall          remove them (leaves your settings otherwise untouched)
 USAGE
+}
+
+cmd_app() {
+  local bundle; bundle=$(ui_app_bundle || true)
+  case "${1:-status}" in
+    status|"")
+      echo "menu bar app"
+      if [ -n "$bundle" ]; then echo "  bundle:   $bundle"; else echo "  bundle:   not built (brb app build)"; fi
+      if ui_running; then echo "  running:  yes"; else echo "  running:  no (brb app start)"; fi
+      if [ -S "$UI_SOCK" ] && ui_up; then
+        echo "  socket:   answering at $UI_SOCK"
+        echo "  drawing:  the app draws the panel and the callback"
+      else
+        echo "  socket:   nothing listening"
+        echo "  drawing:  AppleScript panel and dialog (the fallback)"
+      fi
+      ;;
+    build)
+      [ -x "$BRB_HOME/app/build.sh" ] || { echo "no app sources at $BRB_HOME/app" >&2; return 1; }
+      "$BRB_HOME/app/build.sh"
+      ;;
+    install)
+      [ -n "$bundle" ] || { "$BRB_HOME/app/build.sh" || return 1; bundle=$(ui_app_bundle) || return 1; }
+      case "$bundle" in
+        /Applications/*) echo "already installed at $bundle" ;;
+        *) cp -R "$bundle" /Applications/ || return 1
+           echo "installed /Applications/brb.app" ;;
+      esac
+      "$OPEN" /Applications/brb.app && echo "started. look for ☕️ in the menu bar."
+      ;;
+    start)
+      [ -n "$bundle" ] || { echo "not built yet - run: brb app build" >&2; return 1; }
+      ui_running && { echo "already running"; return 0; }
+      "$OPEN" "$bundle" && echo "started $bundle"
+      ;;
+    stop)
+      if ui_running; then pkill -f "brb.app/Contents/MacOS/brb" && echo "stopped"
+      else echo "not running"; fi
+      ;;
+    *)
+      echo "unknown: brb app $1" >&2
+      echo "try: brb app [status|build|install|start|stop]" >&2
+      return 1
+      ;;
+  esac
 }
 
 _fake_session() {
@@ -56,6 +110,16 @@ cmd_panel() {
   local sid; sid=$(_fake_session)
   echo "Panel is opening. Owner: $(cat "$STATE/term/$sid")"
   echo "(this is the real panel - picking a site will open it and count as leaving)"
+  # The app draws it when it is running, exactly as a real turn would.
+  if ui_send "$(ui_json event start session "$sid" owner "$(cat "$STATE/term/$sid")" cwd "$PWD")" &&
+     ui_send "$(ui_json event panel session "$sid")"; then
+    echo "(drawn by the menu bar app)"
+    # The app owns the window from here; drop our fixture so the next turn is
+    # not counted as still busy.
+    ui_send "$(ui_json event stop session "$sid")" >/dev/null 2>&1
+    _cleanup_session "$sid"
+    return 0
+  fi
   "$BRB_HOME/lib/panel.sh" "$sid"
   if [ -f "$STATE/left/$sid" ]; then
     echo "-> you left via the panel. In a real turn you'd get the callback when Claude finished."
@@ -70,6 +134,10 @@ cmd_alert() {
   local owner; owner=$(owning_terminal_bundle || frontmost_bundle)
   echo "Firing the real callback. Return-to: $owner"
   echo "(skips the 'did you leave via the panel' check so you can see it on demand)"
+  if ui_send "$(ui_json event done session "demo-$$" message "$msg" owner "$owner" cwd "$PWD")"; then
+    echo "(drawn by the menu bar app)"
+    return 0
+  fi
   "$BRB_HOME/lib/done-dialog.sh" "$msg" "$owner"
   echo "Button: '$(cat "$STATE/done.txt" 2>/dev/null)'"
 }
@@ -257,6 +325,13 @@ cmd_status() {
   echo "working now:  ${a:-(none)}"
   local l; l=$(ls -A "$STATE/left" 2>/dev/null | tr '\n' ' ')
   echo "away via panel: ${l:-(none)}"
+  if ui_up; then
+    echo "app:          running, drawing the panel and callback"
+  elif ui_app_bundle >/dev/null; then
+    echo "app:          built but not running (brb app start)"
+  else
+    echo "app:          not installed - AppleScript panel and dialog"
+  fi
   local p; p=$(cat "$STATE/panel.pid" 2>/dev/null)
   if [ -n "$p" ] && kill -0 "$p" 2>/dev/null; then echo "panel:        open (pid $p)"; else echo "panel:        closed"; fi
   echo -n "hooks:        "
@@ -305,6 +380,32 @@ cmd_doctor() {
   chk "hooks registered"             "$PY -c \"import json,os,glob;s=json.load(open(os.path.expanduser('~/.claude/settings.json'))).get('hooks',{});a=any('brb' in e.get('command','') for g in s.values() for grp in g for e in grp['hooks']);b=bool(glob.glob(os.path.expanduser('~/.claude/plugins/cache/*/brb/*')));assert a or b\""
   chk "can read frontmost app"       "[ -n \"\$($OSA -e 'tell application \"System Events\" to get bundle identifier of first application process whose frontmost is true')\" ]"
   chk "can find owning terminal"     "[ -n \"\$(owning_terminal_bundle)\" ]"
+  local root stale=0
+  while IFS= read -r root; do
+    [ -n "$root" ] || continue
+    if hooks_know_app "$root"; then
+      echo "  ok    hooks at $root can use the app"
+    else
+      echo "  note  hooks at $root predate the app - they draw the AppleScript UI"
+      stale=1
+    fi
+  done <<EOF
+$(installed_hook_roots)
+EOF
+  if [ "$stale" = 1 ] && ui_running; then
+    ok=1
+    echo "  WARN  the app is running but the installed hooks do not know about it,"
+    echo "        so real turns draw the old UI while brb panel draws the new one."
+    echo "        update the plugin, or run ./install.sh from this checkout with"
+    echo "        the published plugin disabled (/plugin)."
+  fi
+  if ui_app_bundle >/dev/null 2>&1; then
+    chk "menu bar app installed"     "ui_app_bundle"
+    if ui_up; then echo "  ok    menu bar app running"
+    else echo "  note  menu bar app installed but not running (brb app start)"; fi
+  else
+    echo "  note  menu bar app not installed - using the AppleScript panel (brb app build)"
+  fi
   echo
   [ "$ok" = 0 ] && echo "all good." || echo "something above needs attention."
   echo "note: notification banners need permission for 'Script Editor' in"
@@ -315,6 +416,7 @@ cmd_doctor() {
 case "${1:-}" in
   install)    shift; exec "$BRB_HOME/install.sh" "$@" ;;
   uninstall)  shift; exec "$BRB_HOME/uninstall.sh" "$@" ;;
+  app)        shift; cmd_app "${1:-status}" ;;
   panel)      cmd_panel ;;
   alert)      shift; cmd_alert "${1:-}" ;;
   attention)  shift; cmd_attention "${1:-}" ;;

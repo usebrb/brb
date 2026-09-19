@@ -16,5 +16,12 @@ pid=$(cat "$STATE/panel.pid" 2>/dev/null)
 
 is_dry && { log "DRY: would show panel for sid=${SID:0:8}"; exit 0; }
 date +%s > "$STATE/shown/$SID"
+
+# The app draws a nicer panel when it is running. Otherwise, AppleScript.
+if ui_send "$(ui_json event panel session "$SID" started "$(cat "$STATE/active/$SID" 2>/dev/null)")"; then
+  log "panel handed to brb.app for sid=${SID:0:8}"
+  exit 0
+fi
+
 log "showing panel for sid=${SID:0:8}"
 exec "$BRB_HOME/lib/panel.sh" "$SID"

@@ -23,5 +23,10 @@ rm -f "$STATE/shown/$HK_SESSION" "$STATE/left/$HK_SESSION" "$STATE/rearm/$HK_SES
 app_window_center "$(cat "$STATE/term/$HK_SESSION" 2>/dev/null)" > "$STATE/anchor/$HK_SESSION" 2>/dev/null
 
 log "busy sid=${HK_SESSION:0:8} owner=$(cat "$STATE/term/$HK_SESSION" 2>/dev/null) delay=$(current_delay)s"
+
+# Tell the menu bar app a turn started, so it can count up. Harmless if absent.
+ui_send "$(ui_json event start session "$HK_SESSION" \
+  owner "$(cat "$STATE/term/$HK_SESSION" 2>/dev/null)" cwd "$HK_CWD")" >/dev/null 2>&1
+
 spawn_detached "$BRB_HOME/lib/watch.sh" "$HK_SESSION"
 exit 0

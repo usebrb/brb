@@ -67,3 +67,20 @@ jobs:
             grep -q 'uname.*Darwin' "$f" || { echo "$f has no macOS guard"; exit 1; }
           done
           echo "guards present"
+
+  mac:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: App unit tests
+        run: swift test --package-path app
+
+      - name: Build the app bundle
+        run: ./app/build.sh
+
+      - name: Hook wiring, end to end
+        run: ./test/hooks.test.sh
+
+      - name: CLI
+        run: ./test/cli.test.sh

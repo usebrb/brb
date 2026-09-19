@@ -8,8 +8,8 @@
     {
       "name": "brb",
       "source": "./",
-      "description": "Offers you somewhere to go when Claude runs long, then calls you back the moment it is done."
+      "description": "Offers you somewhere to go when Claude runs long, then calls you back the moment it is done. Native menu bar app optional."
     }
   ],
-  "description": "brb - take a break while Claude Code works, and get called back the moment it is done."
+  "description": "brb - take a break while Claude Code works, and get called back the moment it is done. Hooks only, with an optional menu bar app for the UI."
 }

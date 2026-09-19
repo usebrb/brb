@@ -2,7 +2,20 @@
 
 When Claude works, brb offers a break. When it finishes, brb calls you back.
 
-It hangs off Claude Code's own lifecycle hooks. macOS only (it uses `osascript` for the UI).
+It hangs off Claude Code's own lifecycle hooks: no AI, no polling, no terminal
+scraping. macOS only.
+
+Two halves, and the first one is all you need:
+
+- **The hooks.** Installed as a Claude Code plugin. They decide everything: when a
+  turn has run long enough to be worth interrupting, whether you actually left, and
+  whether a finished turn has earned a callback.
+- **The menu bar app** (optional). Draws the panel and the callback natively, with
+  real site logos, and keeps a running count of the turn in the menu bar. Without it
+  the hooks draw the same decisions in AppleScript.
+
+<img width="360" alt="The break panel: a list of sites with their logos, and a note or two." src="docs/panel.png" />
+<img width="360" alt="The callback: Claude is done, worked 14s, with a Back to Terminal button." src="docs/callback.png" />
 
 <img width="1080" height="1080" alt="brb: go somewhere on purpose. It comes and gets you when Claude is done." src="brb-poster.png" />
 
@@ -40,8 +53,61 @@ first) and links the CLI. Use this only if you are not using the plugin: running
 registers the hooks twice and everything fires twice. `./uninstall.sh` reverses it.
 </details>
 
-macOS only: the panel and alerts are AppleScript. On other platforms the hooks exit
-immediately and do nothing.
+macOS only. On other platforms the hooks exit immediately and do nothing.
+
+## The menu bar app
+
+The hooks can draw their UI two ways. Out of the box it is AppleScript, which needs
+nothing installed but looks like a system prompt from 2005. Build the menu bar app and
+the same hooks draw a native panel instead, with icons, hover, number keys and a
+callback card you can read at a glance:
+
+```sh
+brb app build      # needs Xcode command line tools
+brb app install    # copies it to /Applications and starts it
+```
+
+Look for ☕️ in the menu bar. It turns into ⚡️ with a running count while Claude works,
+🔔 when Claude needs you, and ✅ when a turn lands. The menu holds the same break list,
+the timer and the on/off switch, so you rarely need the CLI.
+
+Each site in the list gets its own logo. The app fetches it from that site once
+(`https://<site>/apple-touch-icon.png`, then `/favicon.ico`) and caches it under
+`~/.claude/brb/state/icons/`. No favicon service sits in the middle, so the only server
+that learns what is on your list is the one you were about to visit. An emoji at the
+start of a label is used until the logo arrives, and forever if the fetch fails. To turn
+fetching off entirely: `touch ~/.claude/brb/no-icons`.
+
+Nothing depends on the app. The hooks ask it first over a unix socket at
+`~/.claude/brb/state/ui.sock`; if it isn't running, or if you set `BRB_UI=0`, they fall
+back to AppleScript and behave exactly as before. `brb app` says which path is live.
+
+The app is ad-hoc signed, so it is for people who build it themselves. A notarized
+build for `brew install --cask` is the next step.
+
+### One brb at a time
+
+The hooks and the app are versioned together. If the installed plugin is older than the
+app — the usual state when you are working on brb itself — real turns draw the
+AppleScript panel while `brb panel` draws the new one, and it looks like two different
+programs. `brb doctor` names every registered copy and warns when they disagree.
+
+To run a checkout instead of the published plugin: disable it with `/plugin`, then
+`./install.sh` from the checkout. Reverse it with `./uninstall.sh`.
+
+## Tests
+
+```sh
+test/run.sh              # everything
+swift test --package-path app   # the app on its own
+test/hooks.test.sh       # the hooks, end to end, against a throwaway config
+test/cli.test.sh         # the brb command
+```
+
+The hook tests run the real hook scripts against a temporary `BRB_CONF`, with the app
+started and stopped around them, and cover both paths: what happens with the app
+running, and what happens without it. Your own config, item list and log are never
+touched.
 
 ### Works wherever Claude Code runs
 

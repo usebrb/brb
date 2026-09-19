@@ -1,2 +1,4 @@
 .DS_Store
 *.bak
+app/.build/
+app/dist/

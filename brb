@@ -243,6 +243,7 @@ cmd_film() {
       if [ "${BRB_QUIET:-0}" != 1 ]; then
         defaults write com.apple.finder CreateDesktop -bool false 2>/dev/null && killall Finder 2>/dev/null
       fi
+      ui_send '{"event":"warm"}' >/dev/null 2>&1   # logos cached before the camera rolls
       log "film prep: list swapped, timer 3s"
       cat <<CHECK
 Scene set.

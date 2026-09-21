@@ -123,9 +123,12 @@ assert_log    "" "PINGING (brb.app" "the app draws the callback"
 assert_no_log "" "PINGING (dialog"  "and the AppleScript dialog stays out of it"
 
 fresh_log
-hook on-attention.sh '{"session_id":"t4","notification_type":"permission_prompt"}'
+BRB_FAKE_FRONT="com.example.Browser" hook on-attention.sh '{"session_id":"t4","notification_type":"permission_prompt"}'
 assert_log "" "PINGING type=permission_prompt" "attention pings still fire"
 assert_log "" "quiet: would notify" "and the banner is suppressed under BRB_QUIET"
+
+# Warming the logo cache ahead of a recording, so the first panel has no flicker.
+assert_ok "the app accepts a warm event" "ui_send '{\"event\":\"warm\"}'"
 
 # Stop clears the session so the menu bar stops counting.
 assert_ok "the app accepts a stop event" "ui_send \"\$(ui_json event stop session t4)\""
@@ -169,8 +172,14 @@ assert_no_log "" "PINGING"                 "and nothing is pinged"
 
 fresh_log
 date +%s > "$SANDBOX/state/left/a1"
-hook on-attention.sh '{"session_id":"a1","notification_type":"idle_prompt"}'
+BRB_FAKE_FRONT="com.example.Browser" hook on-attention.sh '{"session_id":"a1","notification_type":"idle_prompt"}'
 assert_log "" "PINGING type=idle_prompt" "idle does ping when the panel sent you away"
+
+# And the mirror: at the terminal, Claude blocked on you stays quiet, since you
+# can already see it.
+fresh_log
+BRB_FAKE_FRONT="$(cat "$SANDBOX/state/term/a1")" hook on-attention.sh '{"session_id":"a1","notification_type":"permission_prompt"}'
+assert_no_log "" "PINGING" "at the terminal, a permission prompt is not pinged"
 rm -f "$SANDBOX"/state/active/* "$SANDBOX"/state/left/* "$SANDBOX"/state/rearm/*
 
 # --- 3. the escape hatches --------------------------------------------------

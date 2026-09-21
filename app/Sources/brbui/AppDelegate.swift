@@ -87,6 +87,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         worked: s.map { Int(Date().timeIntervalSince($0.started)) })
       return ["ok": true]
 
+    case "warm":
+      Conf.icons.warm(Conf.items())
+      return ["ok": true]
+
     case "stop":
       book.end(sid)
       if str("panel") != "keep" { breakPanel?.close() }

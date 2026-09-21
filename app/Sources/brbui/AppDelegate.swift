@@ -54,7 +54,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     switch event {
     case "ping":
-      return ["ok": true, "app": "brb"]
+      return ["ok": true, "app": "brb", "sessions": book.count]
+
+    case "reset":
+      // The shell cleared its markers; let go of the same turns, or the menu
+      // bar keeps counting one that ended long ago.
+      book = SessionBook()
+      breakPanel?.close()
+      doneCard?.close()
+      refreshStatus()
+      Conf.log("reset: forgot every session")
+      return ["ok": true]
 
     case "start":
       book.start(sid, owner: str("owner"), cwd: str("cwd"))

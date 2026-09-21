@@ -561,6 +561,7 @@ case "${1:-}" in
   reset)      rm -f "$STATE"/active/* "$STATE"/shown/* "$STATE"/term/* "$STATE"/left/* "$STATE"/rearm/* \
                     "$STATE/panel.pid" "$STATE/done.pid" 2>/dev/null
               kill_panel; kill_done_dialog
+              ui_send '{"event":"reset"}' >/dev/null 2>&1
               echo "state cleared (timer and items kept)" ;;
   on)         rm -f "$BRB_CONF/OFF"; echo "brb enabled" ;;
   off)        touch "$BRB_CONF/OFF"; echo "brb disabled (brb on to re-enable)" ;;

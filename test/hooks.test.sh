@@ -127,6 +127,20 @@ BRB_FAKE_FRONT="com.example.Browser" hook on-attention.sh '{"session_id":"t4","n
 assert_log "" "PINGING type=permission_prompt" "attention pings still fire"
 assert_log "" "quiet: would notify" "and the banner is suppressed under BRB_QUIET"
 
+# `brb reset` clears the shell's markers; the app has to let go of the same
+# sessions, or the menu bar counts a turn that ended long ago.
+fresh_log
+hook on-start.sh '{"session_id":"r1","cwd":"/tmp/one"}'
+hook on-start.sh '{"session_id":"r2","cwd":"/tmp/two"}'
+if ui_send '{"event":"ping"}' && "$(ui_client)" send '{"event":"ping"}' | grep -q '"sessions":2'; then
+  ok "the app is counting both turns"
+else bad "the app is counting both turns" "$("$(ui_client)" send '{"event":"ping"}')"; fi
+
+"$REPO/brb" reset >/dev/null
+if "$(ui_client)" send '{"event":"ping"}' | grep -q '"sessions":0'; then
+  ok "brb reset makes the app let go of them too"
+else bad "brb reset makes the app let go of them too" "$("$(ui_client)" send '{"event":"ping"}')"; fi
+
 # Warming the logo cache ahead of a recording, so the first panel has no flicker.
 assert_ok "the app accepts a warm event" "ui_send '{\"event\":\"warm\"}'"
 

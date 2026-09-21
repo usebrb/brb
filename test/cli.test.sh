@@ -84,6 +84,39 @@ has "help" "brb panel" "panel is still offered"
 has "help" "brb demo"  "demo is still offered"
 has "help" "brb seed"  "seed is still offered"
 
+note "brb film: setting the scene and putting it back"
+# The shoot swaps in a short list and a fast timer, and must hand back exactly
+# what was there before. Under BRB_QUIET it never touches Finder.
+printf '🎹 Piano|https://example.com\n' > "$SANDBOX/items.txt"
+brb timer 45s >/dev/null
+brb film prep >/dev/null
+if [ -f "$SANDBOX/film/items.txt.bak" ]; then ok "prep backs up the item list"; else bad "prep backs up the item list"; fi
+if grep -q "Piano" "$SANDBOX/film/items.txt.bak"; then ok "and the backup is the real list"; else bad "and the backup is the real list"; fi
+if ! grep -q "Piano" "$SANDBOX/items.txt" && grep -q "x.com" "$SANDBOX/items.txt"; then ok "the film list is in place"
+else bad "the film list is in place"; fi
+if grep -c "|" "$SANDBOX/items.txt" | grep -q "^3$"; then ok "and it is three sites, no notes"; else bad "and it is three sites, no notes" "$(cat "$SANDBOX/items.txt")"; fi
+if [ "$(cat "$SANDBOX/state/delay")" = 3 ]; then ok "the timer is at the floor"; else bad "the timer is at the floor"; fi
+if [ "$(cat "$SANDBOX/film/delay.bak")" = 45 ]; then ok "and the old timer is remembered"; else bad "and the old timer is remembered"; fi
+
+brb film prep >/dev/null
+if grep -q "Piano" "$SANDBOX/film/items.txt.bak"; then ok "a second prep does not clobber the backup"
+else bad "a second prep does not clobber the backup"; fi
+
+has "film prep" "Grayscale" "prep prints the checklist"
+has "film"      "prep"      "film with no verb explains itself"
+
+brb film restore >/dev/null
+if grep -q "Piano" "$SANDBOX/items.txt"; then ok "restore brings the list back"; else bad "restore brings the list back"; fi
+if [ "$(cat "$SANDBOX/state/delay")" = 45 ]; then ok "and the timer"; else bad "and the timer"; fi
+if [ ! -d "$SANDBOX/film" ]; then ok "and leaves nothing behind"; else bad "and leaves nothing behind"; fi
+if says "film restore" "nothing to restore"; then ok "restore without prep says so"; else bad "restore without prep says so"; fi
+
+# A user with no list of their own must not end up with the film list as theirs.
+rm -f "$SANDBOX/items.txt"
+brb film prep >/dev/null; brb film restore >/dev/null
+if [ ! -f "$SANDBOX/items.txt" ]; then ok "restore removes the film list when there was none before"
+else bad "restore removes the film list when there was none before"; fi
+
 note "hooks that predate the app"
 # A checkout that is newer than the installed plugin is the normal state during
 # development, and it is why people see the old panel and the new one in the

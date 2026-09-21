@@ -168,6 +168,18 @@ brb matrix             # every decision path, printed, NO UI drawn
 `brb matrix` is the fast one. It runs each branch with `BRB_DRY=1` and prints what
 each would have done, so you can check the logic without a single popup.
 
+### Recording a demo
+
+```sh
+brb film prep          # short list, 3s timer, desktop icons hidden, prints a checklist
+brb film take 100      # a real 100s turn through the real hooks: panel at 3s, callback at the end
+brb film restore       # your list, timer and desktop back
+```
+
+Nothing in the take is staged: the panel and the callback are the ones a real turn
+draws. Turn on Grayscale under Accessibility → Display → Color Filters if you want
+the monochrome look, and off again after.
+
 ## Day to day
 
 ```sh

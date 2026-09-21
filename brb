@@ -30,6 +30,11 @@ The menu bar app - a nicer panel and callback than the AppleScript ones:
   brb app install        put it in /Applications and start it
   brb app start | stop   run it or quit it
 
+Filming a demo:
+  brb film prep          short list, 3s timer, tidy desktop; prints the checklist
+  brb film take [secs]   run a real scripted turn to record (default 100)
+  brb film restore       put your list, timer and desktop back
+
 Testing - none of these need a real Claude turn:
   brb panel              show the break panel right now
   brb alert [message]    show the "Claude is done" callback right now
@@ -183,24 +188,114 @@ cmd_demo() {
 # code path Claude Code takes without needing a slow Claude turn to sit through.
 cmd_seed() {
   local secs="${1:-30}" sid="seed-$$"
+  local msg="${2:-Seeded turn finished. This is the callback you get when Claude is done.}"
   echo "Seeding a $secs second turn (session $sid)."
   echo "This runs the real hooks, so it exercises exactly what Claude Code triggers."
   echo
-  printf '%s' "{\"session_id\":\"$sid\"}" | "$BRB_HOME/hooks/on-start.sh"
+  printf '%s' "{\"session_id\":\"$sid\",\"cwd\":\"$PWD\"}" | "$BRB_HOME/hooks/on-start.sh"
   echo "  UserPromptSubmit fired - panel due in $(fmt_delay "$(current_delay)")"
   echo "  pick a site when it appears, then stay in the browser"
   echo
   local i="$secs"
   while [ "$i" -gt 0 ]; do printf "\r  turn ends in %3ds " "$i"; sleep 1; i=$((i-1)); done
   printf "\r                      \r"
-  printf '%s' "{\"session_id\":\"$sid\",\"last_assistant_message\":\"Seeded turn finished. This is the callback you get when Claude is done.\"}" \
-    | "$BRB_HOME/hooks/on-done.sh"
+  "$PY" -c 'import json,sys;print(json.dumps({"session_id":sys.argv[1],"cwd":sys.argv[2],"last_assistant_message":sys.argv[3]}))' \
+      "$sid" "$PWD" "$msg" | "$BRB_HOME/hooks/on-done.sh"
   echo "  Stop fired"
   echo
   echo "Trace:"
   grep -F "$sid" "$LOG" 2>/dev/null | sed 's/^/  /'
   grep -F "donedlg" "$LOG" 2>/dev/null | tail -2 | sed 's/^/  /'
   rm -f "$STATE"/active/"$sid" "$STATE"/shown/"$sid" "$STATE"/term/"$sid" "$STATE"/left/"$sid" "$STATE"/anchor/"$sid"
+}
+
+# Set the scene for a screen recording, drive a real turn through the real
+# hooks, then put everything back. Nothing here is faked: the panel and the
+# callback are the ones a real turn draws.
+FILM="$BRB_CONF/film"
+
+_film_items() {
+  cat <<'ITEMS'
+# brb film: a short list for the camera. `brb film restore` brings yours back.
+X|https://x.com
+Hacker News|https://news.ycombinator.com
+YouTube|https://youtube.com
+ITEMS
+}
+
+cmd_film() {
+  case "${1:-}" in
+    prep)
+      mkdir -p "$FILM"
+      # Back up once. A second prep must not overwrite the real list with ours.
+      if [ ! -f "$FILM/delay.bak" ]; then
+        current_delay > "$FILM/delay.bak"
+        if [ -f "$(user_items_file)" ]; then
+          cp "$(user_items_file)" "$FILM/items.txt.bak"
+        else
+          : > "$FILM/no-items"     # there was no list of their own
+        fi
+      fi
+      _film_items > "$(user_items_file)"
+      echo 3 > "$STATE/delay"
+      # Desktop icons out of the frame. Skipped under BRB_QUIET (tests).
+      if [ "${BRB_QUIET:-0}" != 1 ]; then
+        defaults write com.apple.finder CreateDesktop -bool false 2>/dev/null && killall Finder 2>/dev/null
+      fi
+      log "film prep: list swapped, timer 3s"
+      cat <<CHECK
+Scene set.
+  list:   X, Hacker News, YouTube   (yours is backed up)
+  timer:  3s                        (was $(cat "$FILM/delay.bak")s)
+  desktop icons: hidden
+
+Before you press record:
+  1. System Settings > Accessibility > Display > Color Filters > Grayscale  (on)
+  2. Dark mode on. Quit everything but Terminal and your browser.
+  3. One Terminal window, about 120x30, top-left of the screen.
+  4. Make sure the app is up:  brb app     (☕️ in the menu bar)
+  5. Browser open on a feed, behind the terminal, on this same display.
+
+Then:  brb film take
+When you are done:  brb film restore
+CHECK
+      ;;
+    take)
+      local secs="${2:-100}"
+      ui_up || echo "note: the app is not running, so this will draw the AppleScript UI (brb app start)"
+      echo "Recording take. Turn lasts ${secs}s."
+      echo "  the panel appears at 3s. click X. stay in the browser."
+      echo "  the callback lands when the countdown ends. click Back to Terminal."
+      echo
+      local i
+      for i in 3 2 1; do printf '\r  %s ' "$i"; sleep 1; done
+      printf '\r    \r'
+      cmd_seed "$secs" "Refactored the auth module: 14 files changed, all 212 tests green."
+      ;;
+    restore)
+      [ -d "$FILM" ] || { echo "nothing to restore"; return 0; }
+      if [ -f "$FILM/items.txt.bak" ]; then
+        mv "$FILM/items.txt.bak" "$(user_items_file)"
+      elif [ -f "$FILM/no-items" ]; then
+        rm -f "$(user_items_file)"
+      fi
+      [ -f "$FILM/delay.bak" ] && mv "$FILM/delay.bak" "$STATE/delay"
+      rm -rf "$FILM"
+      if [ "${BRB_QUIET:-0}" != 1 ]; then
+        defaults delete com.apple.finder CreateDesktop 2>/dev/null && killall Finder 2>/dev/null
+      fi
+      log "film restore: list and timer back"
+      echo "restored: your list, your timer ($(fmt_delay "$(current_delay)")), desktop icons."
+      echo "remember to turn Grayscale back off."
+      ;;
+    *)
+      echo "brb film prep | take [secs] | restore"
+      echo "  prep     swap in a short list and a 3s timer, print the recording checklist"
+      echo "  take     run a real scripted turn through the real hooks, to record"
+      echo "  restore  put your list, timer and desktop back"
+      return 1
+      ;;
+  esac
 }
 
 cmd_matrix() {
@@ -422,7 +517,8 @@ case "${1:-}" in
   attention)  shift; cmd_attention "${1:-}" ;;
   demo)       shift; cmd_demo "${1:-20}" ;;
   matrix)     cmd_matrix ;;
-  seed)       shift; cmd_seed "${1:-30}" ;;
+  seed)       shift; cmd_seed "${1:-30}" "${2:-}" ;;
+  film)       shift; cmd_film "$@" ;;
   status)     cmd_status ;;
   windows)    cmd_windows ;;
   park)       cmd_park ;;

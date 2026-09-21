@@ -100,6 +100,7 @@ if grep -q "reddit.com" "$SANDBOX/items.txt" && grep -q "substack.com" "$SANDBOX
 else bad "X, Reddit, Hacker News, Substack; no YouTube" "$(cat "$SANDBOX/items.txt")"; fi
 if [ "$(cat "$SANDBOX/state/delay")" = 3 ]; then ok "the timer is at the floor"; else bad "the timer is at the floor"; fi
 if [ "$(cat "$SANDBOX/film/delay.bak")" = 45 ]; then ok "and the old timer is remembered"; else bad "and the old timer is remembered"; fi
+if [ -f "$SANDBOX/film/dock.bak" ]; then ok "and how your Dock was set"; else bad "and how your Dock was set"; fi
 
 brb film prep >/dev/null
 if grep -q "Piano" "$SANDBOX/film/items.txt.bak"; then ok "a second prep does not clobber the backup"
@@ -112,6 +113,8 @@ brb film restore >/dev/null
 if grep -q "Piano" "$SANDBOX/items.txt"; then ok "restore brings the list back"; else bad "restore brings the list back"; fi
 if [ "$(cat "$SANDBOX/state/delay")" = 45 ]; then ok "and the timer"; else bad "and the timer"; fi
 if [ ! -d "$SANDBOX/film" ]; then ok "and leaves nothing behind"; else bad "and leaves nothing behind"; fi
+if says "film prep" "Dock"; then ok "prep says what it did to the desktop"; else bad "prep says what it did to the desktop"; fi
+brb film restore >/dev/null
 if says "film restore" "nothing to restore"; then ok "restore without prep says so"; else bad "restore without prep says so"; fi
 
 # A user with no list of their own must not end up with the film list as theirs.

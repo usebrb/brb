@@ -120,6 +120,21 @@ brb film prep >/dev/null; brb film restore >/dev/null
 if [ ! -f "$SANDBOX/items.txt" ]; then ok "restore removes the film list when there was none before"
 else bad "restore removes the film list when there was none before"; fi
 
+note "brb film ending: a pickup shot for the callback"
+# A take whose turn blocked on a permission prompt never reaches the callback.
+# The pickup fires the real Stop path so the ending can be recorded on its own.
+mkdir -p "$SANDBOX/state/active" "$SANDBOX/state/left" "$SANDBOX/state/term"
+: > "$SANDBOX/state/brb.log"
+BRB_DRY=1 BRB_FAKE_FRONT="com.example.Browser" brb film ending 0 "Wrote the tests. All green." >/dev/null
+if grep -q "PINGING" "$SANDBOX/state/brb.log"; then ok "the pickup reaches the real callback path"
+else bad "the pickup reaches the real callback path" "$(tail -3 "$SANDBOX/state/brb.log")"; fi
+if grep -q "Wrote the tests. All green." "$SANDBOX/state/brb.log"; then ok "and carries the message you gave it"
+else bad "and carries the message you gave it"; fi
+if [ -z "$(ls -A "$SANDBOX/state/active" 2>/dev/null)" ] && [ -z "$(ls -A "$SANDBOX/state/left" 2>/dev/null)" ]; then
+  ok "and leaves no session behind"
+else bad "and leaves no session behind" "active=$(ls -A "$SANDBOX/state/active") left=$(ls -A "$SANDBOX/state/left")"; fi
+has "film" "ending" "film lists the pickup verb"
+
 note "hooks that predate the app"
 # A checkout that is newer than the installed plugin is the normal state during
 # development, and it is why people see the old panel and the new one in the

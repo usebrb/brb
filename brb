@@ -33,6 +33,7 @@ The menu bar app - a nicer panel and callback than the AppleScript ones:
 Filming a demo:
   brb film prep          short list, 3s timer, tidy desktop; prints the checklist
   brb film take [secs]   run a real scripted turn to record (default 100)
+  brb film ending [secs] fire just the callback, to pick up a missed ending
   brb film restore       put your list, timer and desktop back
 
 Testing - none of these need a real Claude turn:
@@ -257,9 +258,17 @@ Before you press record:
   3. One Terminal window, about 120x30, top-left of the screen.
   4. Make sure the app is up:  brb app     (☕️ in the menu bar)
   5. Browser open on a feed, behind the terminal, on this same display.
+  6. Record the WHOLE SCREEN, not a region. Cropping is free afterwards;
+     a callback that lands outside the frame is gone for good.
 
-Then:  brb film take
-When you are done:  brb film restore
+A real turn must not stop to ask you anything: a permission prompt blocks the
+turn while you are in the browser, so it never finishes and no callback ever
+comes. Either start it with --dangerously-skip-permissions in a repo whose
+changes you can throw away, or tell it not to run any commands.
+
+Then:  a real turn, or  brb film take
+Missed the ending?      brb film ending 8 "what Claude just did"
+When you are done:      brb film restore
 CHECK
       ;;
     take)
@@ -273,6 +282,24 @@ CHECK
       for i in 3 2 1; do printf '\r  %s ' "$i"; sleep 1; done
       printf '\r    \r'
       cmd_seed "$secs" "Refactored the auth module: 14 files changed, all 212 tests green."
+      ;;
+    ending)
+      # The callback on its own, for when a take's turn blocked and never got
+      # there. Same Stop hook a real turn runs, so the card is the real card.
+      local secs="${2:-8}" msg="${3:-Wrote the tests and ran them. All green.}"
+      local sid="film-$$" term
+      term=$(owning_terminal_bundle || frontmost_bundle)
+      date +%s > "$STATE/active/$sid"
+      printf '%s' "$term" > "$STATE/term/$sid"
+      app_window_center "$term" > "$STATE/anchor/$sid" 2>/dev/null
+      date +%s > "$STATE/left/$sid"      # as if the panel had sent you away
+      echo "Pickup shot. The callback lands in ${secs}s - be in the browser."
+      local i="$secs"
+      while [ "$i" -gt 0 ]; do printf "\r  %2ds " "$i"; sleep 1; i=$((i-1)); done
+      printf "\r      \r"
+      "$PY" -c 'import json,sys;print(json.dumps({"session_id":sys.argv[1],"cwd":sys.argv[2],"last_assistant_message":sys.argv[3]}))' \
+        "$sid" "$PWD" "$msg" | "$BRB_HOME/hooks/on-done.sh"
+      rm -f "$STATE/active/$sid" "$STATE/term/$sid" "$STATE/left/$sid" "$STATE/anchor/$sid" "$STATE/shown/$sid"
       ;;
     restore)
       [ -d "$FILM" ] || { echo "nothing to restore"; return 0; }
@@ -291,9 +318,10 @@ CHECK
       echo "remember to turn Grayscale back off."
       ;;
     *)
-      echo "brb film prep | take [secs] | restore"
+      echo "brb film prep | take [secs] | ending [secs] [message] | restore"
       echo "  prep     swap in a short list and a 3s timer, print the recording checklist"
       echo "  take     run a real scripted turn through the real hooks, to record"
+      echo "  ending   fire just the callback, to pick up an ending you missed"
       echo "  restore  put your list, timer and desktop back"
       return 1
       ;;

@@ -21,6 +21,10 @@ else
   echo "== app unit tests: skipped (no swift toolchain)"
 fi
 
+echo
+echo "== common.sh"
+"$REPO/test/common.test.sh" || rc=1
+
 if [ "$(uname)" = Darwin ]; then
   echo
   echo "== hook wiring"

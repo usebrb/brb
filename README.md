@@ -173,12 +173,17 @@ each would have done, so you can check the logic without a single popup.
 ```sh
 brb film prep          # X, Reddit, Hacker News, Substack; 3s timer; desktop icons hidden
 brb film take 100      # a real 100s turn through the real hooks: panel at 3s, callback at the end
+brb film ending 8      # just the callback, for picking up an ending you missed
 brb film restore       # your list, timer and desktop back
 ```
 
 Nothing in the take is staged: the panel and the callback are the ones a real turn
 draws. Turn on Grayscale under Accessibility → Display → Color Filters if you want
 the monochrome look, and off again after.
+
+Record the whole screen rather than a region, and give the turn no reason to stop and
+ask you anything. A permission prompt mid-turn blocks it while you are away, so the
+turn never finishes and the callback never comes.
 
 ## Day to day
 

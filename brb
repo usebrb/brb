@@ -218,8 +218,9 @@ _film_items() {
   cat <<'ITEMS'
 # brb film: a short list for the camera. `brb film restore` brings yours back.
 X|https://x.com
+Reddit|https://reddit.com
 Hacker News|https://news.ycombinator.com
-YouTube|https://youtube.com
+Substack|https://substack.com
 ITEMS
 }
 
@@ -245,7 +246,7 @@ cmd_film() {
       log "film prep: list swapped, timer 3s"
       cat <<CHECK
 Scene set.
-  list:   X, Hacker News, YouTube   (yours is backed up)
+  list:   X, Reddit, Hacker News, Substack   (yours is backed up)
   timer:  3s                        (was $(cat "$FILM/delay.bak")s)
   desktop icons: hidden
 

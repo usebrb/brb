@@ -171,7 +171,7 @@ each would have done, so you can check the logic without a single popup.
 ### Recording a demo
 
 ```sh
-brb film prep          # short list, 3s timer, desktop icons hidden, prints a checklist
+brb film prep          # X, Reddit, Hacker News, Substack; 3s timer; desktop icons hidden
 brb film take 100      # a real 100s turn through the real hooks: panel at 3s, callback at the end
 brb film restore       # your list, timer and desktop back
 ```

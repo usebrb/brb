@@ -190,6 +190,7 @@ struct BreakItem: Identifiable {
     case "mail.google.com", "gmail.com": return "📬"
     case "open.spotify.com", "spotify.com": return "🎧"
     case "linkedin.com": return "💼"
+    case "substack.com": return "✉️"
     case "wikipedia.org", "en.wikipedia.org": return "📚"
     default: return "🌐"
     }

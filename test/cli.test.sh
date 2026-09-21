@@ -94,7 +94,10 @@ if [ -f "$SANDBOX/film/items.txt.bak" ]; then ok "prep backs up the item list"; 
 if grep -q "Piano" "$SANDBOX/film/items.txt.bak"; then ok "and the backup is the real list"; else bad "and the backup is the real list"; fi
 if ! grep -q "Piano" "$SANDBOX/items.txt" && grep -q "x.com" "$SANDBOX/items.txt"; then ok "the film list is in place"
 else bad "the film list is in place"; fi
-if grep -c "|" "$SANDBOX/items.txt" | grep -q "^3$"; then ok "and it is three sites, no notes"; else bad "and it is three sites, no notes" "$(cat "$SANDBOX/items.txt")"; fi
+if grep -c "|" "$SANDBOX/items.txt" | grep -q "^4$"; then ok "and it is four sites, no notes"; else bad "and it is four sites, no notes" "$(cat "$SANDBOX/items.txt")"; fi
+if grep -q "reddit.com" "$SANDBOX/items.txt" && grep -q "substack.com" "$SANDBOX/items.txt" && ! grep -q "youtube" "$SANDBOX/items.txt"; then
+  ok "X, Reddit, Hacker News, Substack; no YouTube"
+else bad "X, Reddit, Hacker News, Substack; no YouTube" "$(cat "$SANDBOX/items.txt")"; fi
 if [ "$(cat "$SANDBOX/state/delay")" = 3 ]; then ok "the timer is at the floor"; else bad "the timer is at the floor"; fi
 if [ "$(cat "$SANDBOX/film/delay.bak")" = 45 ]; then ok "and the old timer is remembered"; else bad "and the old timer is remembered"; fi
 

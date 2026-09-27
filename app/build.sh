@@ -8,9 +8,16 @@ VERSION=$("/usr/bin/python3" -c "import json;print(json.load(open('$HERE/../.cla
 
 echo "building brbui ($VERSION)…"
 # UNIVERSAL=1 builds for Apple Silicon and Intel, for the release download.
+# One arch at a time, then lipo: a multi-arch swift build goes through XCBuild,
+# which rejects the package's Swift language settings on CI's Xcode.
 if [ "${UNIVERSAL:-0}" = 1 ]; then
-  swift build -c release --arch arm64 --arch x86_64 --package-path "$HERE" >/dev/null
-  BIN="$HERE/.build/apple/Products/Release/brbui"
+  for a in arm64 x86_64; do
+    swift build -c release --arch "$a" --package-path "$HERE" >/dev/null
+  done
+  BIN="$HERE/.build/brbui-universal"
+  lipo -create -output "$BIN" \
+    "$HERE/.build/arm64-apple-macosx/release/brbui" \
+    "$HERE/.build/x86_64-apple-macosx/release/brbui"
 else
   swift build -c release --package-path "$HERE" >/dev/null
   BIN="$HERE/.build/release/brbui"

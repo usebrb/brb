@@ -7,11 +7,18 @@ APP="$DIST/brb.app"
 VERSION=$("/usr/bin/python3" -c "import json;print(json.load(open('$HERE/../.claude-plugin/plugin.json'))['version'])" 2>/dev/null || echo 0.0.0)
 
 echo "building brbui ($VERSION)…"
-swift build -c release --package-path "$HERE" >/dev/null
+# UNIVERSAL=1 builds for Apple Silicon and Intel, for the release download.
+if [ "${UNIVERSAL:-0}" = 1 ]; then
+  swift build -c release --arch arm64 --arch x86_64 --package-path "$HERE" >/dev/null
+  BIN="$HERE/.build/apple/Products/Release/brbui"
+else
+  swift build -c release --package-path "$HERE" >/dev/null
+  BIN="$HERE/.build/release/brbui"
+fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$HERE/.build/release/brbui" "$APP/Contents/MacOS/brb"
+cp "$BIN" "$APP/Contents/MacOS/brb"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

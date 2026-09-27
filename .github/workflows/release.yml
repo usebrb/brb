@@ -2,7 +2,7 @@ name: release
 on:
   push:
     branches: [main]
-    paths: ['brb', 'lib/**', 'hooks/**', 'share/**', '.claude-plugin/**']
+    paths: ['brb', 'lib/**', 'hooks/**', 'share/**', 'app/**', '.claude-plugin/**']
 
 # Users only see an update when the manifest version changes, so bump it
 # automatically whenever shipped code changes and the version was left alone.

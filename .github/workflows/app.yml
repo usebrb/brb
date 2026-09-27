@@ -1,0 +1,37 @@
+name: app
+on:
+  # Runs after the release workflow, which bumps the version whenever shipped
+  # code (the app included) changes. Its bump is pushed with the workflow
+  # token, which doesn't trigger push workflows, hence workflow_run.
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency: { group: app-release, cancel-in-progress: false }
+
+# Builds a universal brb.app and attaches it to the GitHub release for the
+# current plugin version. The plugin's SessionStart hook downloads it from
+# there (app_sync in lib/common.sh).
+jobs:
+  publish:
+    runs-on: macos-15
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+
+      - name: Build universal app
+        run: UNIVERSAL=1 ./app/build.sh
+
+      - name: Zip
+        run: ditto -ck --keepParent app/dist/brb.app brb.app.zip
+
+      - name: Publish to the release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          v=$(python3 -c "import json;print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          gh release view "v$v" >/dev/null 2>&1 ||
+            gh release create "v$v" --target main --title "brb $v" \
+              --notes "Install: \`claude plugin marketplace add usebrb/brb && claude plugin install brb@brb\`, then start a new Claude Code session. The plugin installs this app for you."
+          gh release upload "v$v" brb.app.zip --clobber

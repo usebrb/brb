@@ -38,6 +38,10 @@ REQUIRE_AWAY=0
 # the app can't be reached you get a banner instead. Set to 1 to bring the old
 # dialogs back as the fallback. Slated for removal.
 LEGACY_UI="${BRB_LEGACY_UI:-0}"
+# The plugin installs the menu bar app on the first session, and swaps it for
+# the matching release whenever the plugin updates. Set to 0 if you build the
+# app yourself.
+AUTO_APP=1
 [ -f "$BRB_CONF/config.sh" ] && . "$BRB_CONF/config.sh"
 
 mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left" "$STATE/anchor" "$STATE/rearm"
@@ -513,6 +517,91 @@ ui_ensure() {
 ui_deliver() {
   ui_send "$1" && return 0
   ui_ensure && ui_send "$1"
+}
+
+# The plugin version, read without python (which may not be installed).
+plugin_version() {
+  sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$BRB_HOME/.claude-plugin/plugin.json" 2>/dev/null | head -1
+}
+
+app_version() {
+  /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$1/Contents/Info.plist" 2>/dev/null
+}
+
+# Install the menu bar app, or update it to match the plugin, from the GitHub
+# release of the same version. Called at session start. The download goes
+# through curl, which doesn't quarantine it, so the ad-hoc signed app opens
+# without a Gatekeeper prompt.
+#
+# BRB_APPS_DIR and BRB_APP_URL point it elsewhere, for the tests.
+app_sync() {
+  [ "$AUTO_APP" = 1 ] || { log "app sync: AUTO_APP=0, skipping"; return 0; }
+  # A checkout means someone builds the app themselves; never overwrite it.
+  [ -e "$BRB_HOME/.git" ] && [ -z "${BRB_APP_URL:-}" ] && return 0
+
+  local want have bundle dest url tmp stamp
+  want=$(plugin_version)
+  [ -n "$want" ] || { log "app sync: no plugin version"; return 0; }
+  if [ -n "${BRB_APPS_DIR:-}" ]; then
+    bundle="$BRB_APPS_DIR/brb.app"; [ -x "$bundle/Contents/MacOS/brb" ] || bundle=""
+  else
+    bundle=$(ui_app_bundle || true)
+  fi
+  have=""; [ -n "$bundle" ] && have=$(app_version "$bundle")
+  [ "$have" = "$want" ] && return 0
+
+  # Don't pull the app out from under a turn that's running. Next session.
+  if [ -n "$have" ] && ls "$STATE"/active/* >/dev/null 2>&1; then
+    log "app sync: $have -> $want waits, a turn is running"; return 0
+  fi
+  # A release's app is built a few minutes after the version bump. Until it
+  # exists, try at most once an hour.
+  stamp="$STATE/app-sync.$want"
+  if [ -f "$stamp" ] && [ $(( $(date +%s) - $(cat "$stamp" 2>/dev/null || echo 0) )) -lt 3600 ]; then
+    return 0
+  fi
+
+  if is_dry; then log "DRY: would install app $want (have: ${have:-none})"; return 0; fi
+
+  url="${BRB_APP_URL:-https://github.com/usebrb/brb/releases/download/v$want/brb.app.zip}"
+  tmp=$(mktemp -d "${TMPDIR:-/tmp}/brb-app.XXXXXX") || return 0
+  if ! curl -fsSL --max-time 90 "$url" -o "$tmp/brb.app.zip" 2>/dev/null ||
+     ! ditto -xk "$tmp/brb.app.zip" "$tmp/x" ||
+     [ "$(app_version "$tmp/x/brb.app")" != "$want" ]; then
+    date +%s > "$stamp"
+    log "app sync: no app $want at $url yet"
+    rm -rf "$tmp"; return 0
+  fi
+
+  # Replace it where it already lives, else /Applications, else ~/Applications.
+  case "$bundle" in
+    */Applications/brb.app) dest="$bundle" ;;
+    *) if [ -n "${BRB_APPS_DIR:-}" ]; then dest="$BRB_APPS_DIR/brb.app"
+       elif [ -w /Applications ]; then dest=/Applications/brb.app
+       else mkdir -p "$HOME/Applications"; dest="$HOME/Applications/brb.app"; fi ;;
+  esac
+
+  local was_running=0
+  if [ -z "${BRB_APPS_DIR:-}" ] && ui_running; then
+    was_running=1; pkill -f "brb.app/Contents/MacOS/brb" 2>/dev/null; sleep 0.5
+  fi
+  rm -rf "$dest.new" && ditto "$tmp/x/brb.app" "$dest.new" &&
+    rm -rf "$dest" && mv "$dest.new" "$dest"
+  local rc=$?
+  xattr -dr com.apple.quarantine "$dest" 2>/dev/null
+  rm -rf "$tmp" "$stamp"
+  [ "$rc" = 0 ] || { log "app sync: could not write $dest"; return 0; }
+  printf '%s' "$dest" > "$STATE/ui.app"
+
+  if [ -n "$have" ]; then
+    log "app sync: updated $have -> $want at $dest"
+    [ "$was_running" = 1 ] && ui_ensure >/dev/null 2>&1
+  else
+    log "app sync: installed $want at $dest"
+    ui_ensure >/dev/null 2>&1
+    notify "brb is ready" "Look for ☕️ in your menu bar. Your next long turn offers a break." "$SOUND_DONE"
+  fi
+  return 0
 }
 
 # DEPRECATED: should the old AppleScript panel and dialog be drawn when the app

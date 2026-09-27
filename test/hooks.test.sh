@@ -255,5 +255,68 @@ BRB_DRY=1 "$REPO/lib/watch.sh" s1
 assert_log "" "DRY: would show panel" "and the watcher still gets as far as the panel"
 rm -f "$SANDBOX/state/ui.sock" "$SANDBOX"/state/active/*
 
+# --- the plugin installs and updates its own app ---------------------------
+
+note "the app installs itself"
+WANT=$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$REPO/.claude-plugin/plugin.json" | head -1)
+fake_app() {  # fake_app <dir> <version>: a bundle with just enough to pass
+  mkdir -p "$1/brb.app/Contents/MacOS"
+  printf '#!/bin/sh\n' > "$1/brb.app/Contents/MacOS/brb"; chmod +x "$1/brb.app/Contents/MacOS/brb"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $2" "$1/brb.app/Contents/Info.plist" >/dev/null
+}
+fake_app "$SANDBOX/rel" "$WANT"
+ditto -ck --keepParent "$SANDBOX/rel/brb.app" "$SANDBOX/rel/brb.app.zip"
+export BRB_APPS_DIR="$SANDBOX/apps"; mkdir -p "$BRB_APPS_DIR"
+export BRB_APP_URL="file://$SANDBOX/rel/brb.app.zip"
+app_ver() { /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$BRB_APPS_DIR/brb.app/Contents/Info.plist" 2>/dev/null; }
+syncs() { grep -c "app sync" "$SANDBOX/state/brb.log" 2>/dev/null; }
+
+fresh_log
+BRB_DRY=1 hook on-session.sh '{}'
+assert_log "" "DRY: would install app $WANT (have: none)" "a dry run only says what it would install"
+assert_no_file "and installs nothing" "$BRB_APPS_DIR/brb.app"
+
+fresh_log
+hook on-session.sh '{}'
+assert_ok  "a first session installs the app"            '[ "$(app_ver)" = "$WANT" ]'
+assert_log "" "app sync: installed $WANT" "and logs it"
+
+fresh_log
+hook on-session.sh '{}'
+assert_ok  "a current app is left alone, silently"        '[ "$(syncs)" = 0 ]'
+
+rm -rf "$BRB_APPS_DIR/brb.app"; fake_app "$BRB_APPS_DIR" 0.0.1
+echo "$(date +%s)" > "$SANDBOX/state/active/busy"
+fresh_log
+hook on-session.sh '{}'
+assert_ok  "an update waits while a turn is running"     '[ "$(app_ver)" = 0.0.1 ]'
+assert_log "" "waits, a turn is running" "and says why"
+rm -f "$SANDBOX/state/active/busy"
+hook on-session.sh '{}'
+assert_ok  "then updates to the plugin's version"        '[ "$(app_ver)" = "$WANT" ]'
+assert_log "" "app sync: updated 0.0.1 -> $WANT" "and logs the update"
+
+rm -rf "$BRB_APPS_DIR/brb.app"
+fresh_log
+BRB_APP_URL="file://$SANDBOX/rel/missing.zip" hook on-session.sh '{}'
+BRB_APP_URL="file://$SANDBOX/rel/missing.zip" hook on-session.sh '{}'
+assert_ok  "a missing release is tried once an hour, not every session" '[ "$(syncs)" = 1 ]'
+assert_no_file "and installs nothing" "$BRB_APPS_DIR/brb.app"
+rm -f "$SANDBOX"/state/app-sync.*
+
+fake_app "$SANDBOX/old" 0.0.2; ditto -ck --keepParent "$SANDBOX/old/brb.app" "$SANDBOX/old/brb.app.zip"
+fresh_log
+BRB_APP_URL="file://$SANDBOX/old/brb.app.zip" hook on-session.sh '{}'
+assert_no_file "a download of the wrong version is not installed" "$BRB_APPS_DIR/brb.app"
+rm -f "$SANDBOX"/state/app-sync.*
+
+echo 'AUTO_APP=0' > "$SANDBOX/config.sh"
+fresh_log
+hook on-session.sh '{}'
+assert_log "" "AUTO_APP=0, skipping" "AUTO_APP=0 turns it off"
+assert_no_file "and installs nothing" "$BRB_APPS_DIR/brb.app"
+rm -f "$SANDBOX/config.sh"
+unset BRB_APPS_DIR BRB_APP_URL
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

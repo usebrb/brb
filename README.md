@@ -25,29 +25,35 @@ when a turn lands.
 
 ## Install
 
-macOS only. On other platforms the hooks exit and do nothing.
-
-**1. The plugin** (the hooks):
+One line in Terminal:
 
 ```sh
-claude plugin marketplace add usebrb/brb
-claude plugin install brb@brb
+claude plugin marketplace add usebrb/brb && claude plugin install brb@brb
 ```
 
-Then run `/reload-plugins` or start a new session.
+Then start a new Claude Code session. On that first session the plugin downloads
+its menu bar app from this repo's
+[latest release](https://github.com/usebrb/brb/releases/latest) into
+`/Applications` and starts it. Look for ☕️ in the menu bar. That's all.
 
-**2. The menu bar app**, which draws the panel and the callback card. It needs the
-Xcode command line tools:
+You can also install from inside Claude Code: `/plugin marketplace add usebrb/brb`,
+then `/plugin install brb@brb`.
+
+macOS 14 or later. On other platforms the hooks exit and do nothing.
+
+**Updates** come through Claude Code's plugin updates. When the plugin moves to a
+new version, the next session swaps the app for the matching release. It waits if
+a turn is running.
+
+**Building the app yourself?** Put `AUTO_APP=0` in `~/.claude/brb/config.sh` and
+the plugin never touches it. Then:
 
 ```sh
 git clone https://github.com/usebrb/brb && cd brb
 ./brb app install      # builds it, copies it to /Applications, starts it
 ```
 
-Look for ☕️ in the menu bar. Without the app, there's no break panel and the callback
-falls back to a plain notification banner.
-
-**3. The `brb` command** (optional), for the timer, your list and diagnostics:
+**The `brb` command** is optional, for the timer, your list and diagnostics:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/usebrb/brb/main/install-cli.sh | bash
@@ -95,8 +101,8 @@ To turn that off, run `touch ~/.claude/brb/no-icons`.
 Everything lives in `~/.claude/brb/`:
 
 - `items.txt`: your break list
-- `config.sh`: optional overrides, like sounds, titles and `REQUIRE_AWAY=1` (only call
-  back if you're still away when the turn ends)
+- `config.sh`: optional overrides, like sounds, titles, `REQUIRE_AWAY=1` (only call
+  back if you're still away when the turn ends) and `AUTO_APP=0` (leave the app alone)
 - `state/brb.log`: what brb decided and why
 
 It works wherever Claude Code runs: the CLI, the Desktop app, VS Code and JetBrains.

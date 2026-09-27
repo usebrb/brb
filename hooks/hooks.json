@@ -1,5 +1,17 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/on-session.sh",
+            "async": true,
+            "timeout": 180
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [

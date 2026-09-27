@@ -1,4 +1,6 @@
 #!/bin/bash
+# DEPRECATED: the old AppleScript break panel, from before the menu bar app.
+# Only drawn when LEGACY_UI=1; brb.app draws the panel now. Slated for removal.
 # The break panel: a native list whose first row adjusts its own timer.
 BRB_TAG=panel
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"

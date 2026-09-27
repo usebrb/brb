@@ -20,11 +20,10 @@ Day to day:
   brb status             config, live sessions, what's armed
   brb timer [duration]   show or set the break timer (10, 45s, 2m, 1m30s)
   brb items              open the panel item list in \$EDITOR
-  brb on | brb off       enable / disable everything
   brb log [-f]           the decision log ($STATE/brb.log)
   brb doctor             check the install and diagnose common problems
 
-The menu bar app - a nicer panel and callback than the AppleScript ones:
+The menu bar app - draws the panel and the callback, and holds the on/off switch:
   brb app                is it built, installed, running?
   brb app build          build it from this checkout (needs Xcode tools)
   brb app install        put it in /Applications and start it
@@ -68,7 +67,8 @@ cmd_app() {
         echo "  drawing:  the app draws the panel and the callback"
       else
         echo "  socket:   nothing listening"
-        echo "  drawing:  AppleScript panel and dialog (the fallback)"
+        if legacy_ui; then echo "  drawing:  legacy AppleScript panel and dialog (LEGACY_UI=1)"
+        else echo "  drawing:  nothing until the app runs - the hooks will start it if installed"; fi
       fi
       ;;
     build)
@@ -116,8 +116,8 @@ cmd_panel() {
   local sid; sid=$(_fake_session)
   echo "Panel is opening. Owner: $(cat "$STATE/term/$sid")"
   echo "(this is the real panel - picking a site will open it and count as leaving)"
-  # The app draws it when it is running, exactly as a real turn would.
-  if ui_send "$(ui_json event start session "$sid" owner "$(cat "$STATE/term/$sid")" cwd "$PWD")" &&
+  # The app draws it, exactly as a real turn would.
+  if ui_deliver "$(ui_json event start session "$sid" owner "$(cat "$STATE/term/$sid")" cwd "$PWD")" &&
      ui_send "$(ui_json event panel session "$sid")"; then
     echo "(drawn by the menu bar app)"
     # The app owns the window from here; drop our fixture so the next turn is
@@ -125,6 +125,10 @@ cmd_panel() {
     ui_send "$(ui_json event stop session "$sid")" >/dev/null 2>&1
     _cleanup_session "$sid"
     return 0
+  fi
+  if ! legacy_ui; then
+    echo "the menu bar app isn't running and couldn't be started - brb app install" >&2
+    _cleanup_session "$sid"; return 1
   fi
   "$BRB_HOME/lib/panel.sh" "$sid"
   if [ -f "$STATE/left/$sid" ]; then
@@ -140,9 +144,13 @@ cmd_alert() {
   local owner; owner=$(owning_terminal_bundle || frontmost_bundle)
   echo "Firing the real callback. Return-to: $owner"
   echo "(skips the 'did you leave via the panel' check so you can see it on demand)"
-  if ui_send "$(ui_json event done session "demo-$$" message "$msg" owner "$owner" cwd "$PWD")"; then
+  if ui_deliver "$(ui_json event done session "demo-$$" message "$msg" owner "$owner" cwd "$PWD")"; then
     echo "(drawn by the menu bar app)"
     return 0
+  fi
+  if ! legacy_ui; then
+    echo "the menu bar app isn't running and couldn't be started - brb app install" >&2
+    return 1
   fi
   "$BRB_HOME/lib/done-dialog.sh" "$msg" "$owner"
   echo "Button: '$(cat "$STATE/done.txt" 2>/dev/null)'"
@@ -164,8 +172,21 @@ cmd_demo() {
   local secs="${1:-20}" sid
   sid=$(_fake_session)
   echo "1/2  Panel opening - pick a site, then STAY in the browser."
-  "$BRB_HOME/lib/panel.sh" "$sid"
+  local via_app=0
+  if ui_deliver "$(ui_json event start session "$sid" owner "$(cat "$STATE/term/$sid")" cwd "$PWD")" &&
+     ui_send "$(ui_json event panel session "$sid")"; then
+    via_app=1
+    # The app marks the departure itself when you click a site.
+    local w=0
+    while [ ! -f "$STATE/left/$sid" ] && [ "$w" -lt 60 ]; do sleep 1; w=$((w+1)); done
+  elif legacy_ui; then
+    "$BRB_HOME/lib/panel.sh" "$sid"
+  else
+    echo "the menu bar app isn't running and couldn't be started - brb app install" >&2
+    _cleanup_session "$sid"; return 1
+  fi
   if [ ! -f "$STATE/left/$sid" ]; then
+    [ "$via_app" = 1 ] && ui_send "$(ui_json event stop session "$sid")" >/dev/null 2>&1
     echo "You didn't leave via the panel, so a real turn would stay silent here. Done."
     _cleanup_session "$sid"; return 0
   fi
@@ -177,6 +198,10 @@ cmd_demo() {
   owner=$(cat "$STATE/term/$sid"); front=$(frontmost_bundle)
   if same_app "$owner" "$front"; then
     echo "You came back to the terminal -> a real turn stays SILENT. Nothing shown."
+    [ "$via_app" = 1 ] && ui_send "$(ui_json event stop session "$sid")" >/dev/null 2>&1
+  elif [ "$via_app" = 1 ]; then
+    echo "Away ($front) -> firing the callback."
+    ui_send "$(ui_json event done session "$sid" message "Demo: Claude finished while you were away." owner "$owner" cwd "$PWD")" >/dev/null
   else
     echo "Away ($front) -> firing the callback. Click 'Back to work'."
     "$BRB_HOME/lib/done-dialog.sh" "Demo: Claude finished while you were away." "$owner"
@@ -450,7 +475,7 @@ AS
 cmd_status() {
   echo "install:      $BRB_HOME"
   echo "config:       $BRB_CONF"
-  echo "enabled:      $(is_off && echo 'NO (brb on to enable)' || echo yes)"
+  echo "enabled:      $(is_off && echo 'NO (menu bar app > Turn brb on)' || echo yes)"
   echo "break timer:  $(fmt_delay "$(current_delay)")"
   if [ -f "$(user_items_file)" ]; then
     echo "items:        $(user_items_file)"
@@ -467,9 +492,11 @@ cmd_status() {
   if ui_up; then
     echo "app:          running, drawing the panel and callback"
   elif ui_app_bundle >/dev/null; then
-    echo "app:          built but not running (brb app start)"
+    echo "app:          built but not running (brb app start, or the next turn starts it)"
+  elif legacy_ui; then
+    echo "app:          not installed - legacy AppleScript panel and dialog (LEGACY_UI=1)"
   else
-    echo "app:          not installed - AppleScript panel and dialog"
+    echo "app:          NOT INSTALLED - no panel, banner-only callback (brb app install)"
   fi
   local p; p=$(cat "$STATE/panel.pid" 2>/dev/null)
   if [ -n "$p" ] && kill -0 "$p" 2>/dev/null; then echo "panel:        open (pid $p)"; else echo "panel:        closed"; fi
@@ -514,6 +541,7 @@ cmd_doctor() {
   chk "macOS"                        "[ \"\$(uname)\" = Darwin ]"
   chk "python3 present"              "[ -x $PY ]"
   chk "osascript present"            "[ -x $OSA ]"
+  legacy_ui && echo "  note  LEGACY_UI=1 - the deprecated AppleScript panel and dialog are the fallback"
   chk "config dir writable"          "[ -w '$BRB_CONF' ]"
   chk "items file readable"          "[ -r '$(items_file)' ]"
   chk "hooks registered"             "$PY -c \"import json,os,glob;s=json.load(open(os.path.expanduser('~/.claude/settings.json'))).get('hooks',{});a=any('brb' in e.get('command','') for g in s.values() for grp in g for e in grp['hooks']);b=bool(glob.glob(os.path.expanduser('~/.claude/plugins/cache/*/brb/*')));assert a or b\""
@@ -525,7 +553,7 @@ cmd_doctor() {
     if hooks_know_app "$root"; then
       echo "  ok    hooks at $root can use the app"
     else
-      echo "  note  hooks at $root predate the app - they draw the AppleScript UI"
+      echo "  note  hooks at $root predate the app - they draw the old AppleScript UI"
       stale=1
     fi
   done <<EOF
@@ -543,7 +571,8 @@ EOF
     if ui_up; then echo "  ok    menu bar app running"
     else echo "  note  menu bar app installed but not running (brb app start)"; fi
   else
-    echo "  note  menu bar app not installed - using the AppleScript panel (brb app build)"
+    ok=1
+    echo "  FAIL  menu bar app not installed - no break panel until it is (brb app install)"
   fi
   echo
   [ "$ok" = 0 ] && echo "all good." || echo "something above needs attention."
@@ -577,8 +606,12 @@ case "${1:-}" in
               kill_panel; kill_done_dialog
               ui_send '{"event":"reset"}' >/dev/null 2>&1
               echo "state cleared (timer and items kept)" ;;
-  on)         rm -f "$BRB_CONF/OFF"; echo "brb enabled" ;;
-  off)        touch "$BRB_CONF/OFF"; echo "brb disabled (brb on to re-enable)" ;;
+  # DEPRECATED: use "Pause brb" / "Turn brb on" in the menu bar app. Kept
+  # working (same OFF file) so scripts don't break; hidden from help.
+  on)         rm -f "$BRB_CONF/OFF"; echo "brb enabled"
+              echo "(brb on is deprecated - use 'Turn brb on' in the menu bar app)" >&2 ;;
+  off)        touch "$BRB_CONF/OFF"; echo "brb disabled"
+              echo "(brb off is deprecated - use 'Pause brb' in the menu bar app)" >&2 ;;
   ''|-h|--help|help) usage ;;
   *)          echo "unknown command: $1" >&2; echo; usage; exit 1 ;;
 esac

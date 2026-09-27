@@ -44,11 +44,13 @@ note "status"
 has "status" "app:" "status has a line for the menu bar app"
 has "status" "break timer" "status still reports the timer"
 
-note "on / off"
-brb off >/dev/null
-if [ -f "$SANDBOX/OFF" ]; then ok "brb off writes the kill switch"; else bad "brb off writes the kill switch"; fi
-brb on >/dev/null
-if [ ! -f "$SANDBOX/OFF" ]; then ok "brb on removes it"; else bad "brb on removes it"; fi
+note "on / off (deprecated, the menu bar app owns the switch now)"
+brb off >/dev/null 2>&1
+if [ -f "$SANDBOX/OFF" ]; then ok "brb off still writes the kill switch"; else bad "brb off still writes the kill switch"; fi
+brb on >/dev/null 2>&1
+if [ ! -f "$SANDBOX/OFF" ]; then ok "brb on still removes it"; else bad "brb on still removes it"; fi
+if says "on" "deprecated"; then ok "and both say they're deprecated"; else bad "and both say they're deprecated"; fi
+if brb help | grep -q "brb on"; then bad "help no longer lists on / off"; else ok "help no longer lists on / off"; fi
 
 note "the commands that existed before the app still work"
 # brb matrix runs every decision path with no UI at all.

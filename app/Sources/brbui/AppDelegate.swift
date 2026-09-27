@@ -1,7 +1,7 @@
 import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-  private var statusItem: NSStatusItem!
+  private var statusItem: NSStatusItem?
   private var book = SessionBook()
   private var breakPanel: BreakPanelController?
   private var doneCard: DoneCardController?
@@ -12,11 +12,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     Conf.prepare()
     Conf.ensureItemsFile()
 
-    statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    statusItem.button?.title = "☕️"
-    let menu = NSMenu()
-    menu.delegate = self
-    statusItem.menu = menu
+    // Headless (the test suite): no menu bar icon, no windows. Otherwise a test
+    // run flashes a second ☕️ and real cards on the screen of whoever runs it.
+    if !Conf.headless {
+      let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+      item.button?.title = "☕️"
+      let menu = NSMenu()
+      menu.delegate = self
+      item.menu = menu
+      statusItem = item
+    }
 
     do {
       try Bus.listen(path: Conf.sock) { [weak self] msg in
@@ -122,7 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
   private var busiest: (sid: String, session: Session)? { book.busiest }
 
   private func refreshStatus() {
-    guard let button = statusItem.button else { return }
+    guard let button = statusItem?.button else { return }
     let showing = flash.flatMap { $0.until > Date() ? $0.emoji : nil }
     if showing == nil { flash = nil }
     button.title = book.statusTitle(off: Conf.isOff, flash: showing)
@@ -239,6 +244,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   private func showBreakPanel(sid: String, started: Date, project: String) {
     breakPanel?.close()
+    if Conf.headless {
+      Conf.log("panel shown for sid=\(String(sid.prefix(8))) (headless, not drawn)")
+      return
+    }
     let c = BreakPanelController(sid: sid, started: started, project: project)
     c.onPick = { [weak self] item in self?.take(item, sid: sid) }
     c.show()
@@ -248,6 +257,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   private func showDoneCard(message: String, owner: String, project: String, worked: Int?) {
     doneCard?.close()
+    if Conf.headless {
+      Conf.log("callback card shown, return-to='\(owner)' (headless, not drawn)")
+      return
+    }
     let c = DoneCardController(message: message, owner: owner, project: project, worked: worked)
     c.show()
     doneCard = c

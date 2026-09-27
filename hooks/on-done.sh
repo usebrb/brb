@@ -1,7 +1,7 @@
 #!/bin/bash
 # Stop: the turn ended. Take the panel down and, if the panel sent you away,
 # call you back.
-# The panel and alerts are AppleScript; nothing to do elsewhere.
+# macOS only; nothing to do elsewhere.
 [ "$(uname)" = Darwin ] || exit 0
 BRB_TAG=done
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/common.sh"
@@ -49,13 +49,20 @@ fi
 
 msg="$HK_LAST"; [ -n "$msg" ] || msg="Turn complete."
 
-# The app's callback card, if it is running. Otherwise the AppleScript dialog.
-if ui_send "$(ui_json event done session "$HK_SESSION" message "$msg" \
+# The app's callback card, starting the app if it isn't running.
+if ui_deliver "$(ui_json event done session "$HK_SESSION" message "$msg" \
               owner "$term" cwd "$HK_CWD" panel "$panel_action")"; then
   log "PINGING (brb.app, return-to='$term'): $msg"
   exit 0
 fi
 
-log "PINGING (dialog, return-to='$term'): $msg"
-spawn_detached "$BRB_HOME/lib/done-dialog.sh" "$msg" "$term" "$anchor"
+if legacy_ui; then
+  log "PINGING (legacy dialog, return-to='$term'): $msg"
+  spawn_detached "$BRB_HOME/lib/done-dialog.sh" "$msg" "$term" "$anchor"
+  exit 0
+fi
+
+# No app to draw the card: a banner and a sound still say it's done.
+log "PINGING (banner, return-to='$term'): $msg"
+notify "$TITLE_DONE" "$msg" "$SOUND_DONE"
 exit 0

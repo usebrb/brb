@@ -1,4 +1,7 @@
 #!/bin/bash
+# DEPRECATED: the old AppleScript "Claude is done" dialog, from before the menu
+# bar app. Only drawn when LEGACY_UI=1; brb.app draws the callback card now.
+# Slated for removal.
 # Detached "Claude is done" alert: banner for the record, dialog for the action.
 # Runs outside the Stop hook so it can wait for a click past the hook timeout.
 BRB_TAG=donedlg

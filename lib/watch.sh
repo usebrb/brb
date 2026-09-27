@@ -1,5 +1,5 @@
 #!/bin/bash
-# Detached break timer. Shows the panel if the session is still working.
+# Detached break timer. Has the app show the panel if the session is still working.
 BRB_TAG=watch
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -17,11 +17,17 @@ pid=$(cat "$STATE/panel.pid" 2>/dev/null)
 is_dry && { log "DRY: would show panel for sid=${SID:0:8}"; exit 0; }
 date +%s > "$STATE/shown/$SID"
 
-# The app draws a nicer panel when it is running. Otherwise, AppleScript.
-if ui_send "$(ui_json event panel session "$SID" started "$(cat "$STATE/active/$SID" 2>/dev/null)")"; then
+# The app draws the panel, and is started if it isn't running.
+if ui_deliver "$(ui_json event panel session "$SID" started "$(cat "$STATE/active/$SID" 2>/dev/null)")"; then
   log "panel handed to brb.app for sid=${SID:0:8}"
   exit 0
 fi
 
-log "showing panel for sid=${SID:0:8}"
-exec "$BRB_HOME/lib/panel.sh" "$SID"
+if legacy_ui; then
+  log "showing legacy AppleScript panel for sid=${SID:0:8}"
+  exec "$BRB_HOME/lib/panel.sh" "$SID"
+fi
+
+rm -f "$STATE/shown/$SID"
+log "no app to draw the panel for sid=${SID:0:8} (brb app install)"
+exit 0

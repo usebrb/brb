@@ -1,6 +1,6 @@
 #!/bin/bash
 # Notification: Claude wants something from you.
-# The panel and alerts are AppleScript; nothing to do elsewhere.
+# macOS only; nothing to do elsewhere.
 [ "$(uname)" = Darwin ] || exit 0
 BRB_TAG=attention
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/common.sh"

@@ -138,6 +138,8 @@ enum Conf {
   static var logFile: URL { shared.logFile }
   static var itemsFile: URL { shared.itemsFile }
   static var isOff: Bool { shared.isOff }
+  // BRB_HEADLESS=1: answer the socket and log, but draw nothing. For tests.
+  static var headless: Bool { ProcessInfo.processInfo.environment["BRB_HEADLESS"] == "1" }
   static var delay: Int {
     get { shared.delay }
     set { shared.delay = newValue }

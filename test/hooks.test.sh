@@ -1,6 +1,6 @@
 #!/bin/bash
-# End-to-end tests for the hook -> app wiring, and for the AppleScript fallback
-# that has to keep working when the app is not installed.
+# End-to-end tests for the hook -> app wiring, the banner fallback when the app
+# is not installed, and the deprecated AppleScript UI behind LEGACY_UI=1.
 #
 #   test/hooks.test.sh
 #
@@ -69,12 +69,27 @@ fresh_log
 date +%s > "$SANDBOX/state/left/t1"
 BRB_DRY=1 BRB_FAKE_FRONT="com.example.Browser" hook on-done.sh \
   '{"session_id":"t1","last_assistant_message":"All done."}'
-assert_log "" "PINGING (dialog" "Stop falls back to the AppleScript dialog"
+assert_log    "" "PINGING (banner" "Stop falls back to a banner"
+assert_no_log "" "PINGING (legacy dialog" "and never to the old AppleScript dialog"
+
+fresh_log
+BRB_DRY=1 hook on-start.sh '{"session_id":"t1","cwd":"/tmp/demo"}'
+date +%s > "$SANDBOX/state/left/t1"
+BRB_LEGACY_UI=1 BRB_DRY=1 BRB_FAKE_FRONT="com.example.Browser" hook on-done.sh \
+  '{"session_id":"t1","last_assistant_message":"All done."}'
+assert_log "" "PINGING (legacy dialog" "LEGACY_UI=1 brings the old dialog back"
 
 fresh_log
 BRB_DRY=1 hook on-start.sh '{"session_id":"t2","cwd":"/tmp/demo"}'
 BRB_DRY=1 "$REPO/lib/watch.sh" t2
-assert_log "" "DRY: would show panel" "the watcher would draw the AppleScript panel"
+assert_log "" "DRY: would show panel" "the watcher would show the panel"
+
+fresh_log
+BRB_UI=0 hook on-start.sh '{"session_id":"t2b","cwd":"/tmp/demo"}'
+BRB_UI=0 "$REPO/lib/watch.sh" t2b
+assert_log     "" "no app to draw the panel" "with no app, the watcher draws nothing"
+assert_no_log  "" "legacy AppleScript panel" "not even the old AppleScript panel"
+assert_no_file "and does not count the panel as shown" "$SANDBOX/state/shown/t2b"
 rm -f "$SANDBOX"/state/active/* "$SANDBOX"/state/left/* "$SANDBOX"/state/shown/*
 
 # --- 2. app running: it takes over, and the shell draws nothing -------------
@@ -85,7 +100,9 @@ if [ ! -x "$APP_BIN" ]; then
   "$REPO/app/build.sh" >/dev/null || { bad "app builds" "app/build.sh failed"; exit 1; }
 fi
 
-BRB_CONF="$SANDBOX" BRB_QUIET=1 "$APP_BIN" >/dev/null 2>&1 &
+# Headless: the app answers and logs as usual but draws nothing, so a test run
+# doesn't flash panels and callback cards on the screen of whoever runs it.
+BRB_CONF="$SANDBOX" BRB_QUIET=1 BRB_HEADLESS=1 "$APP_BIN" >/dev/null 2>&1 &
 APP_PID=$!
 for _ in 1 2 3 4 5 6 7 8 9 10; do [ -S "$SANDBOX/state/ui.sock" ] && break; sleep 0.3; done
 assert_file "the app opens its socket" "$SANDBOX/state/ui.sock"
@@ -120,7 +137,7 @@ hook on-start.sh '{"session_id":"t4","cwd":"/tmp/brbdemo"}'
 date +%s > "$SANDBOX/state/left/t4"
 hook on-done.sh '{"session_id":"t4","last_assistant_message":"Wired the app up."}'
 assert_log    "" "PINGING (brb.app" "the app draws the callback"
-assert_no_log "" "PINGING (dialog"  "and the AppleScript dialog stays out of it"
+assert_no_log "" "PINGING (legacy dialog" "and the AppleScript dialog stays out of it"
 
 fresh_log
 BRB_FAKE_FRONT="com.example.Browser" hook on-attention.sh '{"session_id":"t4","notification_type":"permission_prompt"}'
@@ -204,7 +221,7 @@ BRB_UI=0 hook on-start.sh '{"session_id":"t5","cwd":"/tmp/demo"}'
 date +%s > "$SANDBOX/state/left/t5"
 BRB_UI=0 BRB_DRY=1 BRB_FAKE_FRONT="com.example.Browser" hook on-done.sh \
   '{"session_id":"t5","last_assistant_message":"Done."}'
-assert_log "" "PINGING (dialog" "BRB_UI=0 forces the AppleScript path"
+assert_log "" "PINGING (banner" "BRB_UI=0 bypasses the app and falls back to a banner"
 
 fresh_log
 touch "$SANDBOX/OFF"
@@ -235,7 +252,7 @@ assert_fails "ui_send fails fast on a dead socket"     "ui_send '{\"event\":\"pi
 fresh_log
 BRB_DRY=1 hook on-start.sh '{"session_id":"s1","cwd":"/tmp/one"}'
 BRB_DRY=1 "$REPO/lib/watch.sh" s1
-assert_log "" "DRY: would show panel" "and the AppleScript panel takes over again"
+assert_log "" "DRY: would show panel" "and the watcher still gets as far as the panel"
 rm -f "$SANDBOX/state/ui.sock" "$SANDBOX"/state/active/*
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"

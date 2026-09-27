@@ -33,6 +33,11 @@ MOVE_BROWSER=0
 # require that you're STILL away when the turn ends - deterministic becomes
 # conditional, and glancing at the terminal at the wrong moment loses the alert.
 REQUIRE_AWAY=0
+# DEPRECATED: the AppleScript panel and "Claude is done" dialog from before the
+# menu bar app. Off by default, so the only UI you ever see is the app's; when
+# the app can't be reached you get a banner instead. Set to 1 to bring the old
+# dialogs back as the fallback. Slated for removal.
+LEGACY_UI="${BRB_LEGACY_UI:-0}"
 [ -f "$BRB_CONF/config.sh" ] && . "$BRB_CONF/config.sh"
 
 mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left" "$STATE/anchor" "$STATE/rearm"
@@ -40,7 +45,8 @@ mkdir -p "$STATE/active" "$STATE/shown" "$STATE/term" "$STATE/left" "$STATE/anch
 LOG="$STATE/brb.log"
 log() { printf '%s [%-9s] %s\n' "$(date '+%H:%M:%S')" "${BRB_TAG:-?}" "$*" >> "$LOG" 2>/dev/null; }
 
-# Kill switch: `brb off` writes this file, `brb on` removes it.
+# Kill switch: the menu bar app's "Pause brb" writes this file and "Turn brb on"
+# removes it. (The deprecated `brb off` / `brb on` do the same.)
 is_off() { [ -f "$BRB_CONF/OFF" ]; }
 
 # A stale "busy" marker keeps the panel from ever closing, so sweep anything
@@ -376,8 +382,9 @@ kill_done_dialog() {
 }
 
 # --- the menu bar app ------------------------------------------------------
-# If brb.app is running it draws everything; the AppleScript path below stays
-# as the fallback, so nothing here is required.
+# brb.app draws everything. If it is installed but not running, ui_ensure
+# starts it. The AppleScript panel and dialog are deprecated and only drawn
+# when LEGACY_UI=1 (see legacy_ui).
 UI_SOCK="$STATE/ui.sock"
 
 ui_json() {
@@ -481,6 +488,36 @@ ui_send() {
 }
 
 ui_up() { ui_send '{"event":"ping"}'; }
+
+# Make sure the app is answering, starting it if it is installed but not
+# running. Never launches under a dry run, with BRB_UI=0, or with a custom
+# BRB_CONF: `open` doesn't pass the environment on, so the app would come up on
+# the real config - and on the real screen - instead of the sandbox's.
+ui_ensure() {
+  [ "${BRB_UI:-1}" = 1 ] || return 1
+  is_dry && return 1
+  ui_up && return 0
+  [ "$BRB_CONF" = "$HOME/.claude/brb" ] || return 1
+  local b i
+  b=$(ui_app_bundle) || return 1
+  ui_running || { "$OPEN" -g "$b" >/dev/null 2>&1 || return 1; log "started $b"; }
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    sleep 0.3
+    ui_up && return 0
+  done
+  log "app did not answer on $UI_SOCK"
+  return 1
+}
+
+# Hand an event to the app, starting it first if need be.
+ui_deliver() {
+  ui_send "$1" && return 0
+  ui_ensure && ui_send "$1"
+}
+
+# DEPRECATED: should the old AppleScript panel and dialog be drawn when the app
+# can't be? Only if you opted back in with LEGACY_UI=1.
+legacy_ui() { [ "${LEGACY_UI:-0}" = 1 ]; }
 
 notify() {
   local title="$1" msg="$2" sound="${3:-Glass}"

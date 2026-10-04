@@ -53,7 +53,7 @@ struct BreakPanelView: View {
     Card {
       if let note { noteView(note) } else { listView }
     }
-    .frame(width: 360)
+    .frame(width: 340)
     .onKeyPress(.escape) { onClose(); return .handled }
     .onKeyPress { press in
       guard note == nil, let n = Int(press.characters), n >= 1, n <= items.count

@@ -21,6 +21,9 @@ enum Chrome {
     p.level = .floating
     p.isOpaque = false
     p.backgroundColor = .clear
+    // The window shadow is the only one: it follows the card's rounded edge.
+    // A SwiftUI shadow inside the window either gets traced by this one (a
+    // dark rectangle with ragged corners) or clipped by the window edge.
     p.hasShadow = true
     p.hidesOnDeactivate = false
     p.isMovableByWindowBackground = true
@@ -37,8 +40,8 @@ enum Chrome {
       ?? NSScreen.main
     guard let visible = screen?.visibleFrame else { return }
     let size = panel.frame.size
-    let x = visible.maxX - size.width - 18
-    let y = visible.maxY - size.height - dropFromTop
+    let x = visible.maxX - size.width - 28
+    let y = visible.maxY - size.height - (dropFromTop + 10)
     panel.setFrameOrigin(NSPoint(x: x, y: y))
   }
 
@@ -47,6 +50,8 @@ enum Chrome {
     place(panel, dropFromTop: dropFromTop)
     panel.orderFrontRegardless()
     panel.makeKey()
+    // The shadow is traced from what's drawn, so trace it once SwiftUI has.
+    DispatchQueue.main.async { panel.invalidateShadow() }
     NSAnimationContext.runAnimationGroup { ctx in
       ctx.duration = 0.16
       panel.animator().alphaValue = 1
@@ -70,8 +75,7 @@ struct Card<Content: View>: View {
       .overlay(
         RoundedRectangle(cornerRadius: 16, style: .continuous)
           .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1))
-      .shadow(color: .black.opacity(0.22), radius: 22, y: 10)
-      .padding(10)
+
   }
 }
 

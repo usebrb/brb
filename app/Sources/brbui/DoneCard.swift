@@ -91,7 +91,7 @@ struct DoneCardView: View {
       }
       .padding(16)
     }
-    .frame(width: 340)
+    .frame(width: 320)
     .onKeyPress(.escape) { onStay(); return .handled }
     .onKeyPress(.return) { onBack(); return .handled }
   }

@@ -55,6 +55,11 @@ echo "brb hook tests   sandbox: $SANDBOX"
 note "with no app running"
 . "$REPO/lib/common.sh"
 
+# The watcher skips the panel when you're away from the terminal, and on-start
+# spawns watchers of its own. Unless a test says otherwise, "you" are at the
+# terminal that owns the session, whatever window is really in front.
+export BRB_FAKE_FRONT="${BRB_FAKE_FRONT:-$(owning_terminal_bundle || echo com.example.Terminal)}"
+
 assert_fails "ui_up reports no app when the socket is missing" "ui_up"
 assert_fails "ui_send refuses without a socket"                "ui_send '{\"event\":\"ping\"}'"
 assert_ok    "ui_json builds valid JSON" \
@@ -90,6 +95,26 @@ BRB_UI=0 "$REPO/lib/watch.sh" t2b
 assert_log     "" "no app to draw the panel" "with no app, the watcher draws nothing"
 assert_no_log  "" "legacy AppleScript panel" "not even the old AppleScript panel"
 assert_no_file "and does not count the panel as shown" "$SANDBOX/state/shown/t2b"
+
+# You walked away before the timer fired: no panel, but you still get called back.
+fresh_log
+BRB_DRY=1 BRB_FAKE_FRONT="com.example.Browser" hook on-start.sh '{"session_id":"t2c","cwd":"/tmp/demo"}'
+BRB_DRY=1 BRB_FAKE_FRONT="com.example.Browser" "$REPO/lib/watch.sh" t2c
+assert_log     "" "already away" "already away from the terminal: the watcher skips the panel"
+assert_no_log  "" "would show panel" "and shows nothing"
+assert_no_file "and does not count the panel as shown" "$SANDBOX/state/shown/t2c"
+assert_file    "but counts it as leaving" "$SANDBOX/state/left/t2c"
+fresh_log
+BRB_DRY=1 BRB_FAKE_FRONT="com.example.Browser" hook on-done.sh \
+  '{"session_id":"t2c","last_assistant_message":"All done."}'
+assert_log "" "PINGING" "so the turn's end still calls you back"
+
+# Still at the terminal (same app, any case): the panel shows as before.
+fresh_log
+BRB_DRY=1 hook on-start.sh '{"session_id":"t2d","cwd":"/tmp/demo"}'
+BRB_DRY=1 BRB_FAKE_FRONT="$(tr '[:lower:]' '[:upper:]' < "$SANDBOX/state/term/t2d")" "$REPO/lib/watch.sh" t2d
+assert_log    "" "DRY: would show panel" "still at the terminal: the panel shows"
+assert_no_log "" "already away" "and it is not mistaken for leaving"
 rm -f "$SANDBOX"/state/active/* "$SANDBOX"/state/left/* "$SANDBOX"/state/shown/*
 
 # --- 2. app running: it takes over, and the shell draws nothing -------------

@@ -11,6 +11,17 @@ sleep "$(current_delay)"
 is_off && { log "OFF"; exit 0; }
 [ -f "$STATE/active/$SID" ] || { log "sid=${SID:0:8} finished before timer, no panel"; exit 0; }
 
+# Already gone from the terminal? Then there's nothing to offer. Count it as
+# leaving, so the done card still calls you back. If either side is unknown,
+# we can't tell, so show the panel as before.
+owner=$(cat "$STATE/term/$SID" 2>/dev/null)
+front=$(frontmost_bundle)
+if [ -n "$owner" ] && [ -n "$front" ] && ! same_app "$owner" "$front"; then
+  date +%s > "$STATE/left/$SID"
+  log "sid=${SID:0:8} already away (front='$front' owner='$owner') -> no panel, will call back"
+  exit 0
+fi
+
 pid=$(cat "$STATE/panel.pid" 2>/dev/null)
 [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && { log "another panel already up"; exit 0; }
 
